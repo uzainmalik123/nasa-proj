@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: "0 */3 * * *"
   workflow_dispatch:
+    inputs:
+      place_limit:
+        description: "Ingest only the N most populous places (0 = all; PRD §10 POWER fallback)"
+        default: "0"
+        required: false
+      power_workers:
+        description: "Parallel POWER requests (global pace stays POWER_PACE_S)"
+        default: "2"
+        required: false
 
 concurrency:
   group: pipeline
@@ -21,6 +30,8 @@ jobs:
       FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
       EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
       EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+      PLACE_LIMIT: ${{ github.event.inputs.place_limit || '0' }}
+      POWER_WORKERS: ${{ github.event.inputs.power_workers || '2' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,6 +50,7 @@ jobs:
           mkdir -p pipeline/data/cache pipeline/data/out
           if git fetch --depth=1 origin data 2>/dev/null; then
             git --work-tree=pipeline/data checkout origin/data -- cache out 2>/dev/null || true
+            git --work-tree=pipeline/data checkout origin/data -- places.parquet 2>/dev/null || true
             git reset -q
             echo "restored $(find pipeline/data/cache -type f | wc -l) cache files"
           else
@@ -57,12 +69,16 @@ jobs:
           stage="$(mktemp -d)"
           mkdir -p "$stage/out" "$stage/cache"
           find pipeline/data/out -maxdepth 1 -name '*.json' -exec cp {} "$stage/out/" \; 2>/dev/null || true
+          cp pipeline/data/places.parquet "$stage/" 2>/dev/null || true
           find pipeline/data/cache -name '*.parquet' -exec cp --parents {} "$stage/" \; 2>/dev/null || true
           # cp --parents keeps the pipeline/data/ prefix; flatten it
           if [ -d "$stage/pipeline/data/cache" ]; then
             cp -r "$stage/pipeline/data/cache/." "$stage/cache/"
             rm -rf "$stage/pipeline"
           fi
+          mkdir -p "$stage/cache/firms"
+          cp pipeline/data/cache/firms/_history.json "$stage/cache/firms/" 2>/dev/null || true
+          echo "staging $(find "$stage" -type f | wc -l) files, $(du -sh "$stage" | cut -f1)"
           cd "$stage"
           git init -q -b data
           git config user.name "etd-pipeline[bot]"
