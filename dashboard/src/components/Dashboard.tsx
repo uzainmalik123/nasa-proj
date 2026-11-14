@@ -14,6 +14,7 @@ import { GIBS_LAYERS } from "./globe/Globe";
 import Feed from "./panels/Feed";
 import Search from "./globe/Search";
 import Freshness, { useNow } from "./panels/Freshness";
+import Honesty from "./panels/Honesty";
 import HazardsTable from "./panels/HazardsTable";
 import Kpis from "./panels/Kpis";
 import PlacePanel from "./panels/PlacePanel";
@@ -216,6 +217,7 @@ export default function Dashboard() {
           onClear={() => select(null)}
         />
         <Feed feed={data?.feed ?? null} places={places} selected={s.selected} hazard={s.hazard} filter={filter} onPick={pickAlert} />
+        <Honesty honesty={data?.honesty ?? null} />
         <Freshness freshness={data?.freshness ?? null} run={data?.run ?? null} />
         <Sources freshness={data?.freshness ?? null} trends={data?.trends ?? null} risk={data?.risk ?? null} />
         <footer className="px-1 pb-1 text-[10px] leading-snug text-muted">

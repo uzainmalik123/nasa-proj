@@ -111,6 +111,11 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 - **Cause:** the floor was chosen for the 1600 px proof viewport, and the attribution control sits in the same corner with no reserved space.
 - **Fix sketch (S3, small):** anchor the panel to the right of the legend instead of the centre (`left: 270px; right: 12px; max-width: 480px`) so it shrinks with the column, and move the attribution to `top-right` (`attributionControl` position) or add `padding-bottom` to `.maplibregl-ctrl-bottom-right` so the (i) button and the expanded box clear the panel. Below ~1100 px the aside's 560 px already leaves too little globe; DESIGN §3 fixes the aside width, so that is a non-goal.
 
+### KI-18 · Mobile: the globe, the site's main attraction, gets a sliver of the screen · **priority**
+- **Seen:** on a phone the layout keeps the desktop split: the 560 px sidebar takes most of the width and the globe is squeezed into a narrow strip on the left. The thing the site is about is barely visible.
+- **Checked:** `Dashboard.tsx` is a single `flex h-screen w-screen overflow-hidden` row: `<section flex: 1.15 min-w-0>` for the globe and `<aside class="w-[560px] shrink-0">` for the panels. There is no breakpoint anywhere in the dashboard (`grep md:|lg:|sm:` finds nothing), so below ~1100 px the fixed-width aside wins and the globe section collapses; `overflow-hidden` on the root also stops the page from scrolling, so nothing can be reached by swiping either.
+- **Fix sketch (S4 owns `Dashboard.tsx`, S3 for globe resize; medium):** below `lg` (1024 px) stack instead of split: root `flex-col` with the globe section `h-[60vh] min-h-[320px]` on top and the aside `w-full` below, scrolling the page rather than the aside (`overflow-y-auto` on the root, drop `sidebar-scroll` at that breakpoint). The controls row (NOW / NEXT 14 DAYS, hazard, trend, continent, imagery) wraps to two rows. Call `map.resize()` after the layout change so MapLibre fills the new box. The 560 px aside and 1.15 flex stay above `lg`. Cheaper interim: a "map / panels" tab bar at the top on small screens that shows one at a time, globe first.
+
 ## Fixed
 - 14 Nov · INTEGRATE d1: KI-7 step 1a (parallel fetch + progress pill), see above.
 - 14 Nov · Open-Meteo day 16 null over Europe (21 places): filled from `gfs_seamless` in the ingest; G2 requires 16 days.
