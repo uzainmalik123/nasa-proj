@@ -3,12 +3,12 @@
 // the newest alert, anomaly chips, the full alert record on hover. Clicking an
 // alert selects its place and its hazard.
 import { useMemo } from "react";
-import { CATEGORY_V, HAZARD_COLOUR, riskColour } from "@/components/charts/ramp";
+import { HAZARD_COLOUR } from "@/components/charts/ramp";
 import { HAZARD_LABEL, fmtCount, fmtDay, fmtUtc, pct } from "@/lib/format";
 import { P } from "@/lib/palette";
 import type { Alert, AlertTrigger, FeedFile, Hazard, Place } from "@/lib/types";
 import { fmtSeverity } from "./HazardCard";
-import { Card, Chip } from "./ui";
+import { Card, CategoryChip, Chip } from "./ui";
 
 const TRIGGER_LABEL: Record<AlertTrigger, string> = {
   category_up: "category ↑",
@@ -99,7 +99,7 @@ export default function Feed({ feed, places, selected, hazard, filter, onPick, m
                       <span className="text-muted">{place?.country ?? ""}</span>
                       <span className="uppercase tracking-wide" style={{ color: colour, fontSize: 10 }}>{HAZARD_LABEL[a.hazard]}</span>
                       <span className="ml-auto shrink-0 font-mono text-ink">{alertHeadline(a)}</span>
-                      <Chip colour={riskColour(Math.max(0.25, CATEGORY_V[a.category]))}>{a.category}</Chip>
+                      <CategoryChip category={a.category} />
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] leading-snug text-muted">
                       <span className="font-mono">{fmtUtc(a.issued_at)} UTC</span>

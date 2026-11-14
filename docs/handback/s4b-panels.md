@@ -45,3 +45,59 @@ Branch `s4-panels`, worktree `../nasa-project-s4` (origin/main merged, S3's glob
 ## Contract notes
 
 None. `contracts.md` and `types.ts` untouched.
+
+---
+
+## Addendum · 2026-11-14 15:10 · wildfire category thresholds 30 / 60 / 90 % (S2-B note 10:05)
+
+Follow-up applied on `s4-panels` (commit after `1ffea3a`), in S4's files plus the shared `lib/palette.ts`. S3's `globe/colour.ts` and `globe/Legend.tsx` are not touched (S3's directory); they must get the identical `CATEGORY_V` and the legend labels, see "For S3" below.
+
+### 1. `CATEGORY_V` · `components/charts/ramp.ts`
+
+| category | before | after | why |
+|---|---|---|---|
+| low | 0.03 | 0.03 | unchanged, below the first stop so it stays muted |
+| elevated | 0.30 | **0.30** | `CATEGORY_THRESHOLDS["wildfire"].elevated` |
+| high | 0.55 | **0.60** | `…high` |
+| extreme | 0.85 | **0.90** | `…extreme` |
+
+New export `WILDFIRE_THRESHOLDS_PCT` = `"30 / 60 / 90 %"` derived from `CATEGORY_V`, so a legend cannot drift from the mapping.
+
+### 2. `RISK_STOPS` · `lib/palette.ts` (colours unchanged)
+
+| stop | before | after | = |
+|---|---|---|---|
+| 0 | 0.00 | 0.000 | transparent end |
+| 1 | 0.05 | **0.150** | 50th pct of today's wildfire p |
+| 2 | 0.20 | **0.590** | 80th |
+| 3 | 0.40 | **0.920** | 95th |
+| 4 | 0.65 | **0.995** | 99th |
+| 5 | 1.00 | 1.000 | bright end |
+
+Verified against the real `risk.json` (run `20261114T0949Z`, 554 places): categories low 375 · elevated 76 · high 70 · extreme 33; percentiles 50/80/95/99 = 0.153 / 0.594 / 0.924 / 0.995. Matches the follow-up's numbers.
+
+### 3. Where S4 quotes thresholds
+
+Nothing in S4 quoted the old 10 / 25 / 50 numbers. The HazardsTable caption now reads, derived from the two constants:
+- `risk ramp 15 · 59 · 92 · 99.5 % = 50 / 80 / 95 / 99th percentile of today's wildfire p`
+- `… elevated / high / extreme at 30 / 60 / 90 %` (wildfire unit note, also the column tooltip)
+
+Side effect fixed: with the new stops the ramp colour at 0.30 and 0.60 is too dark to use as chip *text*. Added `CategoryChip` (`panels/ui.tsx`): a dot in exactly `riskColour(CATEGORY_V[cat])` (low = muted, extreme glows) with the label in `ink-2`. Used in HazardsTable, HazardCard and Feed; the dot colour equals the globe point colour for the same category.
+
+### 4. Screenshots on the real files (`../nasa-project-s2/pipeline/data/out/`, wildfire selected)
+
+`run.json` is not written by S2 (the gates stage owns it), so one was synthesised from `risk.meta` + `honesty.runs[0]` for the build; that is why the KPI tile says `0/0 gates`. `fires_24h.json` is still the mock (S1's file). Everything else is S2's real output.
+
+| Path | Shows |
+|---|---|
+| `s4b/real-full-wildfire-bamako.png` | full screen, `?mode=next14&hazard=wildfire&selected=28`: globe with the new stops, Hazards table 554 places, Bamako selected |
+| `s4b/real-hazards-table-wildfire.png` | Hazards table: 19 of the 33 extreme rows at 94–100 %, ramp bars and 14-day hindcast fills in the new colours, category dots, caption quoting 15 · 59 · 92 · 99.5 % and 30 / 60 / 90 % |
+| `s4b/real-place-bamako-wildfire.png` | PlacePanel on real rows: rainfall trend (10 y → 0.000 mm/yr p=0.76; 90 d ↓ −20 mm/yr p<0.001 on the 30-day total), max temperature +1.3σ with flagged days, hazard cards 100 % extreme / −0.6 elevated / 0 d low / 0 % low, five real SHAP drivers (detections in the last 30 days +1.66 top), the published sentence |
+| `s4b/real-feed.png` | real feed: 50 alerts, Lima heat (capped at elevated, 0.2 °C over threshold), Santiago wildfire 94 %, Khartoum drought 65 % deficit, Porto Alegre rain 88 % |
+
+**Globe:** with the new stops the globe reads as calm over Europe, the Americas' north and East Asia (small muted dots), the ~33 extreme places are the bright yellow points (Sahel, Kuwait/Iraq, India, NE Brazil, Perth), and the ~70 high places form an orange band over India and the Sahel. Calm except where it matters, but the orange band in South Asia is dense enough that "except the ~33 extreme places" is only true at the yellow level.
+
+### For S3 (not done here, their files)
+
+- `globe/colour.ts` `CATEGORY_V` → `{ low: 0.03, elevated: 0.30, high: 0.60, extreme: 0.90 }` (currently 0.03 / 0.30 / 0.55 / 0.85 on `origin/s3-globe`).
+- `globe/Legend.tsx` still labels the ramp `0 / 50 / 100 %`; DESIGN §2 wants the stop values: `0 · 15 · 59 · 92 · 99.5 · 100 %`. `RISK_STOPS` itself is already shared via `lib/palette.ts`, so the globe points in the screenshots above already use the new stops.

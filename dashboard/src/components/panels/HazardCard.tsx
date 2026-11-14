@@ -4,11 +4,11 @@
 // window) and a coloured left border in the hazard's colour. The four numbers
 // are never collapsed into one. Clicking a card picks the hazard whose drivers
 // and sentence the panel shows.
-import { CATEGORY_V, HAZARD_COLOUR, riskColour } from "@/components/charts/ramp";
+import { HAZARD_COLOUR } from "@/components/charts/ramp";
 import { CONFIDENCE_ORDER, HAZARD_LABEL, fmtCount, fmtDay, pct, signed } from "@/lib/format";
 import { P } from "@/lib/palette";
 import type { Hazard, RiskNow } from "@/lib/types";
-import { Chip } from "./ui";
+import { CategoryChip } from "./ui";
 
 /** Headline per hazard: probability for the model hazards, category-bearing value for the threshold ones. */
 export function hazardHeadline(h: Hazard, r: RiskNow): { big: string; sub: string } {
@@ -60,7 +60,7 @@ export default function HazardCard({ hazard, now, validFrom, validTo, selected, 
       <div className="font-mono text-[22px] font-semibold leading-tight text-ink">{head.big}</div>
       <div className="mb-1 flex items-center justify-between gap-1 text-[9.5px] text-muted">
         <span className="truncate">{head.sub}</span>
-        {r && <Chip colour={riskColour(Math.max(0.25, CATEGORY_V[r.category]))}>{r.category}</Chip>}
+        {r && <CategoryChip category={r.category} />}
       </div>
       <Row k="severity" v={fmtSeverity(hazard, r?.severity)} />
       <Row k="exposure" v={r ? `${fmtCount(r.exposure)} pop` : "–"} />

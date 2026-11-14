@@ -20,11 +20,14 @@ export const P = {
   good:     "#0ca30c",
 };
 
+// Stop values = the 50 / 80 / 95 / 99th percentiles of wildfire p across all
+// places on the first scoring run (DESIGN.md §2 "set the stops after the first
+// scoring run"; run 20261114T0949Z, 554 places). Colours are not tunable.
 export const RISK_STOPS: [number, string][] = [
-  [0.00, "rgba(255,120,40,0)"],
-  [0.05, "rgba(140,45,15,0.45)"],
-  [0.20, "#9a3412"],
-  [0.40, "#ea580c"],
-  [0.65, "#fbbf24"],
-  [1.00, "#fef3c7"],
+  [0.000, "rgba(255,120,40,0)"],
+  [0.150, "rgba(140,45,15,0.45)"],
+  [0.590, "#9a3412"],
+  [0.920, "#ea580c"],
+  [0.995, "#fbbf24"],
+  [1.000, "#fef3c7"],
 ];
