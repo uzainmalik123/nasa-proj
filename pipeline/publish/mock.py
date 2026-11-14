@@ -21,6 +21,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config
+from publish import aggregate
 
 RNG = np.random.default_rng(20261114)
 N = config.MOCK_N_PLACES
@@ -492,7 +493,7 @@ def main(out_dir: Path = config.DASHBOARD_DATA_DIR) -> None:
     places = pd.read_parquet(config.PLACES_PARQUET).head(N).reset_index(drop=True)
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"mock data for {len(places)} places → {out_dir}")
-    risk = mock_risk(places)
+    risk = aggregate.attach(places, mock_risk(places))
     write("places.json", mock_places(places), out_dir)
     write("trends.json", mock_trends(places), out_dir)
     write("risk.json", risk, out_dir)
