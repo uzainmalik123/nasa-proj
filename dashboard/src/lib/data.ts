@@ -24,33 +24,47 @@ export const FILES = {
   run: "run.json",
 } as const;
 
-/** Cache-buster: a fresh value per page load, or the run id once we know it. */
-function bust(v?: string): string {
-  return `?v=${v ?? Date.now().toString(36)}`;
+/**
+ * Cache-buster. raw.githubusercontent serves with max-age=300, so the value
+ * changes every 5 min: viewers inside the same window share the CDN copy and
+ * nobody sees a run older than one CDN window after it lands.
+ */
+function bust(): string {
+  return `?v=${Math.floor(Date.now() / 300_000).toString(36)}`;
 }
 
-export async function loadJson<T>(file: string, v?: string): Promise<T> {
-  const res = await fetch(`${DATA_URL}/${file}${bust(v)}`, { cache: "no-store" });
+export async function loadJson<T>(file: string): Promise<T> {
+  const res = await fetch(`${DATA_URL}/${file}${bust()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
   return (await res.json()) as T;
 }
 
+export const FILE_COUNT = Object.keys(FILES).length;
+
 /**
- * Fetch every published file. run.json is fetched first so the remaining
- * requests can use its run_id as a stable cache key.
+ * Fetch every published file, all nine in parallel (KI-7: the old run.json-
+ * first step cost a round trip on every load). `onProgress(done, total)` fires
+ * as each file lands so the UI can show "loading 3 of 9" instead of a bare
+ * "connecting"; a run whose files disagree on run_id is still returned, the
+ * freshness panel shows the ids.
  */
-export async function loadAll(): Promise<Data> {
-  const run = await loadJson<RunFile>(FILES.run);
-  const v = run.run_id;
-  const [places, trends, risk, series, fires, feed, freshness, honesty] = await Promise.all([
-    loadJson<PlacesFile>(FILES.places, v),
-    loadJson<TrendsFile>(FILES.trends, v),
-    loadJson<RiskFile>(FILES.risk, v),
-    loadJson<SeriesFile>(FILES.series, v),
-    loadJson<FiresFile>(FILES.fires, v),
-    loadJson<FeedFile>(FILES.feed, v),
-    loadJson<FreshnessFile>(FILES.freshness, v),
-    loadJson<HonestyFile>(FILES.honesty, v),
+export async function loadAll(onProgress?: (done: number, total: number) => void): Promise<Data> {
+  let done = 0;
+  const get = async <T,>(file: string): Promise<T> => {
+    const out = await loadJson<T>(file);
+    onProgress?.(++done, FILE_COUNT);
+    return out;
+  };
+  const [places, trends, risk, series, fires, feed, freshness, honesty, run] = await Promise.all([
+    get<PlacesFile>(FILES.places),
+    get<TrendsFile>(FILES.trends),
+    get<RiskFile>(FILES.risk),
+    get<SeriesFile>(FILES.series),
+    get<FiresFile>(FILES.fires),
+    get<FeedFile>(FILES.feed),
+    get<FreshnessFile>(FILES.freshness),
+    get<HonestyFile>(FILES.honesty),
+    get<RunFile>(FILES.run),
   ]);
   return { places, trends, risk, series, fires, feed, freshness, honesty, run };
 }

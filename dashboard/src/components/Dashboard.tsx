@@ -5,7 +5,7 @@
 // thing that scrolls. Globe is S3's; everything in the aside is S4's.
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { loadAll } from "@/lib/data";
+import { FILE_COUNT, loadAll } from "@/lib/data";
 import { HAZARD_LABEL, VARIABLE_LABEL, ageHours, fmtAge, fmtCount, fmtUtc } from "@/lib/format";
 import { P } from "@/lib/palette";
 import { HAZARDS, VARIABLES, type Data, type Hazard, type Mode, type Variable } from "@/lib/types";
@@ -55,11 +55,12 @@ function initialState(): AppState {
 export default function Dashboard() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<[number, number]>([0, FILE_COUNT]);
   const [s, setS] = useState<AppState>(initialState);
   const now = useNow();
 
   useEffect(() => {
-    loadAll().then(setData, (e: unknown) => setError(String(e)));
+    loadAll((done, total) => setProgress([done, total])).then(setData, (e: unknown) => setError(String(e)));
   }, []);
 
   const places = useMemo(() => data?.places.places ?? [], [data]);
@@ -165,7 +166,9 @@ export default function Dashboard() {
               title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)}` : undefined}
             >
               <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
-              {data ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}` : "connecting"}
+              {data
+                ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}`
+                : error ? "failed" : `loading ${progress[0]} of ${progress[1]} files`}
             </div>
           </div>
 
