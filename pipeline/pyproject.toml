@@ -23,3 +23,11 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "B", "UP", "RUF"]
 ignore = ["E402"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501", "RUF059"]
