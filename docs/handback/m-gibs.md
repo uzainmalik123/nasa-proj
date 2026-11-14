@@ -51,7 +51,7 @@ console errors: 3   (the three "404 ()" lines are the probe HEADs and one empty 
 - Slider changes do not write `?date=` back to the URL; reading it works (M7 owns URL state).
 - No per-pixel value on hover (GIBS has no GetFeatureInfo for these layers).
 - One GIBS tile per run came back 404/500 at the globe edge (seen as a blank tile, no error surfaced); MapLibre skips it, nothing to do.
-- Verified at 1600×1000 only; at a globe column narrower than ~800 px the panel would overlap the legend (both are `bottom-3`).
+- Verified at 1600×1000. Measured afterwards at 1024–1600 px (`m-gibs/ki17-measure.mjs`): the panel never touches the legend, but below a 1360 px viewport it is clipped on the right, and at every width it covers part of the expanded map attribution → **KI-17** in `docs/KNOWN_ISSUES.md`.
 
 ## Contract notes
 

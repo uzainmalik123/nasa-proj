@@ -95,6 +95,22 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 - **Checked:** both workflows are `active`; the dispatch path is green (14:23Z). GitHub delays or drops scheduled runs on busy days and for new repositories; nothing in the YAML is wrong.
 - **Fix sketch (S1, none unless it persists):** if no scheduled run goes green overnight, dispatch manually before the pitch and add a second cron line offset by 30 min (`30 */3 * * *`) so a dropped slot is covered.
 
+### KI-17 · Globe: the imagery panel is clipped on the right below a 1360 px viewport and always covers part of the map attribution
+- **Seen:** with a GIBS layer on, the bottom-centre imagery panel (M-GIBS) loses its right end (the mono date, the "11-14" slider label) once the globe column is narrower than ~800 px; at every width the panel sits on top of MapLibre's attribution box, hiding "NASA GIBS | MapLibre |" until the user's first drag collapses the box to its (i) button.
+- **Checked (14 Nov, 18:40 UTC, `docs/handback/m-gibs/ki17-measure.mjs` on `dashboard/out`, `?gibs=rain`):** the panel is `left: max(50% − 20px, 510px)`, `width: min(480px, 62%)`, centred, inside the globe wrapper's `overflow-hidden`. The 510 px floor keeps it ≥ 24 px clear of the legend at every width tried, so the legend/panel overlap the M-GIBS handback first listed does **not** happen; it is the far side that fails:
+
+  | viewport | globe column | panel left–right | clipped on the right | attribution box left |
+  |---|---|---|---|---|
+  | 1600 | 1040 | 270–750 | 0 px | 606 (expanded box runs under the panel) |
+  | 1360 | 800 | 270–750 | 0 px | 366 |
+  | 1280 | 720 | 287–733 | 13 px | 286 |
+  | 1200 | 640 | 312–708 | 68 px (date cut to "20") | 206 |
+  | 1024 | 464 | 366–654 | 190 px | 30 |
+
+  Crops: `docs/handback/m-gibs/ki17-panel-clipped-1200.png`, `ki17-attribution-1600.png`. The attribution box is ~434 px wide while expanded (MapLibre shows the compact control open until the first interaction).
+- **Cause:** the floor was chosen for the 1600 px proof viewport, and the attribution control sits in the same corner with no reserved space.
+- **Fix sketch (S3, small):** anchor the panel to the right of the legend instead of the centre (`left: 270px; right: 12px; max-width: 480px`) so it shrinks with the column, and move the attribution to `top-right` (`attributionControl` position) or add `padding-bottom` to `.maplibregl-ctrl-bottom-right` so the (i) button and the expanded box clear the panel. Below ~1100 px the aside's 560 px already leaves too little globe; DESIGN §3 fixes the aside width, so that is a non-goal.
+
 ## Fixed
 - 14 Nov · INTEGRATE d1: KI-7 step 1a (parallel fetch + progress pill), see above.
 - 14 Nov · Open-Meteo day 16 null over Europe (21 places): filled from `gfs_seamless` in the ingest; G2 requires 16 days.
