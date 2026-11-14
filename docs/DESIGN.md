@@ -42,14 +42,15 @@ Series colours are bound to a meaning, not to a slot. Rain is always blue, fire 
 ### Risk ramp (sequential, transparent at zero)
 ```ts
 export const RISK_STOPS: [number, string][] = [
-  [0.00, "rgba(255,120,40,0)"],
-  [0.05, "rgba(140,45,15,0.45)"],
-  [0.20, "#9a3412"],
-  [0.40, "#ea580c"],
-  [0.65, "#fbbf24"],
-  [1.00, "#fef3c7"],
+  [0.00,  "rgba(255,120,40,0)"],
+  [0.15,  "rgba(140,45,15,0.45)"],   // 50th pct of wildfire p, run 20261114T0949Z
+  [0.59,  "#9a3412"],                // 80th
+  [0.92,  "#ea580c"],                // 95th
+  [0.995, "#fbbf24"],                // 99th
+  [1.00,  "#fef3c7"],
 ];
 ```
+Stop values set 14 Nov 2026 after the first real scoring run (554 places), per the rule below. The spike's values were 0.05 / 0.20 / 0.40 / 0.65.
 Used for the globe points, the risk sparkline fill, and the table bars. Always shown with a legend. Risk below the first stop is nearly invisible on purpose: the globe should look calm except where it matters.
 
 **The stop values are tunable, the colours are not (call).** The number shown is a calibrated probability, and the global base rate is unknown until real data is in. On day 1, after the first scoring run, set the stops at the 50th, 80th, 95th and 99th percentiles of current place risk and write the resulting probability values into the legend. If that makes the legend read "0 · 4 · 11 · 30 · 100 %", that is fine. The ramp encodes "unusual for the world right now"; the number next to it stays the honest probability.
@@ -106,11 +107,11 @@ Exposed to Tailwind v4 through `@theme inline` as `bg-page`, `bg-surface`, `text
 - Atmosphere: `atmosphere-blend` interpolated 1 at zoom 0 to 0 at zoom 8.
 - Dim the basemap: hide every symbol layer matching `label|place|poi|road` except country, state, region, city, capital names.
 - Layer order bottom to top: GIBS raster overlay (optional, opacity 0.55), risk points, selected outline, fire glow, fire dots.
-- **Risk points** (global version): `circle` layer, radius interpolated by risk 0 to 1 from 3 to 11 px, colour from `RISK_STOPS` via feature-state, stroke `rgba(0,0,0,0.6)` 1 px so points separate from the basemap. Places below 5% risk render at 3 px in `muted` at 0.5 opacity so the world still reads as "watched".
+- **Risk points** (global version): `circle` layer, colour from `RISK_STOPS` via feature-state, stroke `rgba(0,0,0,0.6)` 1 px so points separate from the basemap. Radius follows the same rank breakpoints as the colour so size and colour agree: 3 px at the first stop, 3.5 / 5 / 8 / 11 px at the 80 / 95 / 99th-percentile stops (computed in `globe/colour.ts` from `RISK_STOPS`, so retuning the stops retunes the radii). Places below the first stop render at 3 px in `muted` at 0.5 opacity so the world still reads as "watched". Trend colouring keeps a linear 3 to 11 px radius on the normalised slope.
 - **Selected place**: white 2 px ring, 1.5× radius.
 - **Fire detections**: two circle layers over the same source. Glow: `#fff7ed`, radius 6 to 18 by count, opacity 0.18, blur 1. Dot: `#fff7ed`, radius 2.2 to 5, stroke `#d03b3b` 1.2 px. For global 0.25° bins use the same pair; radius scales with count.
 - Cursor pointer on hover over points. Click selects. Fly-to on alert pick: `zoom max(current, 5.2)`, `speed 0.9`.
-- Legend bottom-left: gradient bar 176 px wide, labels 0 / 50 / 100 %, then a sample fire dot and the words "active fire detection (FIRMS)".
+- Legend bottom-left: gradient bar 176 px wide with the stops spaced evenly (the bar encodes rank), labelled with the probability at each stop (today 0 · 15 · 59 · 92 · 100 %), a caption naming the percentiles, the category thresholds for probability hazards (wildfire elevated ≥ 30 · high ≥ 60 · extreme ≥ 90 %), then a sample fire dot and the words "active fire detection (FIRMS)".
 
 ## 5. Chart grammar
 
