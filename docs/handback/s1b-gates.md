@@ -7,7 +7,7 @@ Branch `s1-ingest`, merged with `origin/main` (S2-A/B, S3-B, S4-B) first. PR to 
 | Item | Where | Proof |
 |---|---|---|
 | `fires_24h.json` (contracts §3) | `pipeline/ingest/fires24.py`, written by the ingest stage next to `freshness.json` | sample below: 43,566 VIIRS rows → 8,954 bins |
-| G1–G7 → `run.json` | `pipeline/publish/gates.py`; `run.py` always runs it last and exits 1 on a failed stage or gate | standalone run on S2's real data below; 26 pytest cases |
+| G1–G7 → `run.json` | `pipeline/publish/gates.py`; `run.py` always runs it last and exits 1 on a failed stage or gate | standalone run on S2's real data below; 28 pytest cases |
 | `honesty.json` `runs[0]` rewritten with final ok / failed_gate / duration_s, last 10 kept | gates stage | `runs[0]` below |
 | Snapshot `cache/published/{run_id}.parquet` of the published risk | gates stage, green runs only | `test_green_run` asserts the parquet, columns `run_id, place_id, valid_from, valid_to, wildfire_p … rain_category, model_version` |
 | Workflow: gate summary in the job summary, failed-run artifact, push + deploy only on success, G7 polls the live `run.json` for the new run id (3 min) before triggering the deploy | `.github/workflows/pipeline.yml` | YAML parses; steps: checkout, setup-uv, sync, restore, run, gate summary, artifact, push, G7, deploy |
@@ -103,7 +103,7 @@ G1 and G6 fail here because the standalone run measures from `risk.json`'s `gene
 ### Tests and lint
 
 ```
-$ uv run pytest -q tests          26 passed in 0.46s
+$ uv run pytest -q tests          28 passed in 0.93s
 $ uv run ruff check .             All checks passed!
 $ uv run ruff format --check .    33 files already formatted
 $ npm run lint                    (dashboard, unchanged) ok
@@ -161,6 +161,10 @@ second run: reusing 20261114T1130Z.parquet (-0.2 h old, under OPENMETEO_MIN_AGE_
 - `freshness.json` reports the cached run's time and `, cached run <id>` in the product when reused; G3 judges the forecast by that age.
 
 The re-dispatch will reuse the 08:27 forecast (3–4 h old) and make no Open-Meteo call, so it is immune to the ban; the next fetch happens on the first run more than 5.5 h after 08:27.
+
+### Run 43590829949 (second dispatch, 16:36 PKT): G2 on the pre-fill cache
+
+No Open-Meteo call (reused `20261114T0827Z.parquet`, 3.3 h old), 636 s end to end, G1 / G3 / G4 / G5 / G6 pass. G2 failed at 533/554: the reused file was fetched before the GFS fill existed, so the 21 European places still had their all-null day 16. Fix: the reuse path now also runs the fill (one request for the places with holes) and writes `{run_id}.parquet` when it patched anything; a cache from an earlier UTC day is never reused (it covers one forecast day too few). Live from a clean IP with all 554 places (the 08:27 file was 5.9 h old by then, so this exercised the full incremental fetch): 23 requests, 11 s, 21 places filled, 554 of 554 with 16 non-null forecast days, 49,860 rows carried over. 28 pytest cases.
 
 ## Not done
 
