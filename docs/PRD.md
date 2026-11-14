@@ -76,7 +76,7 @@ Secondary users from the blueprint, for the pitch: disaster management teams, pl
 | Need | Source | Access | Newest data on 13 Nov | Key |
 |---|---|---|---|---|
 | Fire detections, live and 12 months history | NASA FIRMS | `/api/area/csv/{KEY}/{SOURCE}/world/{1..5}[/{DATE}]` (world is capped at 5 days; bbox requests allow 10) | ~3 h (NRT); SP archive lags months | MAP_KEY, free, have it |
-| Daily weather observations per place, 10-year record | NASA POWER | `/api/temporal/daily/point?parameters=T2M,T2M_MAX,PRECTOTCORR,RH2M,WS2M,GWETROOT,GWETTOP&community=AG&longitude=&latitude=&start=&end=&format=JSON` | 10 Nov (3-day lag, measured) | none |
+| Daily weather observations per place, 10-year record | NASA POWER | `/api/temporal/daily/point?parameters=T2M,T2M_MAX,PRECTOTCORR,RH2M,WS2M,GWETROOT,GWETTOP&community=AG&longitude=&latitude=&start=&end=&format=JSON` | 10 Nov (3-day lag, measured); the newest ~6 weeks are near-real-time GEOS, not MERRA-2, see §10 | none |
 | 16-day forecast per place | Open-Meteo | `/v1/forecast?latitude=&longitude=&daily=temperature_2m_max,precipitation_sum,relative_humidity_2m_min,wind_speed_10m_max,et0_fao_evapotranspiration&forecast_days=16` | today | none, non-commercial |
 | Rain, NDVI, LST imagery on the globe | NASA GIBS WMTS | `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/{LAYER}/default/{YYYY-MM-DD}/GoogleMapsCompatible_Level{N}/{z}/{y}/{x}.png` | IMERG 12 Nov, LST 13 Nov, NDVI 8-day | none |
 | NDVI per place (stretch) | AppEEARS point sample, MOD13A2.061 | REST, async | 16-day composite | Earthdata login, have it |
@@ -106,6 +106,7 @@ GitHub Actions has a fast network and free minutes on a public repo. No download
    | Heat | forecast max temperature vs the place's own 95th and 99th percentiles, days above, heat index from temperature and humidity | days-above count and category |
    | Heavy rain | forecast 3-day and 7-day totals vs the place's own percentiles | probability of an unusually wet week, labelled "not a flood forecast" |
    Thresholds are per place from its own record, which is what the blueprint asks for and what makes a global version honest.
+   Category lines live in `config.CATEGORY_THRESHOLDS`. Wildfire was reset on 14 Nov after the first real scoring run to 0.30 / 0.60 / 0.90: three or more detections in 14 days is common in the burning belts (label base rate 0.29), so the original 0.10 / 0.25 / 0.50 put a quarter of the world in "extreme". The probability is the honest number; the category marks what is unusual for the world right now (DESIGN.md §2). Heat needs at least 1 °C over the place's 95th percentile on the hottest day before "high" or "extreme" (Lima's 95th percentile is 25.3 °C).
 7. **Risk record per place per hazard**: probability or index, **severity** (expected magnitude: forecast fire weather, deficit depth, degrees above threshold, millimetres), **exposure** (population within the radius), **confidence** (data completeness × held-out skill, three levels), valid window, model version, source records. The four are shown separately and never multiplied into one number without saying how.
 8. **Risk history (call)**: each run scores the last 90 days of feature rows with the current model and writes a per-place series. Every run also appends the risk it actually published to a snapshot store; the honesty panel reads that store once it is two weeks old and the held-out hindcast until then, labelled.
 9. **Alerts (call)**: events persisted in `feed.json`. A place raises one when a hazard crosses its high category upward, its risk is more than 2σ above its own 90-day mean, or a new |z| > 1.5 anomaly flag appears. One per place per hazard per 7 days. Fields follow the blueprint's alert record: id, hazard, place, issued, valid from and to, probability, severity, exposure, confidence, evidence records, explanation, status, model version. Seeded on the first run by replaying the last 30 days.
@@ -183,6 +184,7 @@ The team is one person with ~16 hours across both days, reviewing, plus Claude C
 | FIRMS history too large | MODIS_SP instead of VIIRS, 6 months instead of 12 |
 | Wildfire model weak on 12 months | ship the fire weather index as the risk, model as a toggle; UI unchanged |
 | Trend test noisy on 90 days | show only p < 0.1 as a label; always show the 10-year one |
+| POWER's newest ~6 weeks come from a different model (near-real-time GEOS, not MERRA-2) and soil wetness, wind and humidity step on the switch day for every place at once (seen 2026-10-01: soil −0.05, wind −19 %) | `trend/load.power_step` detects the step each run and removes a per-place offset; every reader goes through `load_power`. Found and fixed 14 Nov. |
 | Actions cron drifts | manual dispatch; demo on the last good run |
 | Open-Meteo quota at higher tiers | forecast every 2nd run |
 
