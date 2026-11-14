@@ -75,6 +75,16 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 - **Seen:** `cache/forecast/{run_id}.parquet` (~500 KB) and `cache/published/{run_id}.parquet` (~45 KB) are added per run and never pruned; 8 runs a day ≈ 4.4 MB/day on a 120 MB force-pushed branch.
 - **Fix sketch (S1, small):** keep the newest 8 forecast files (the published snapshots are the honesty history and should stay); prune in the ingest stage.
 
+### KI-14 · Globe: no way to show places only, fires only, or both
+- **Seen:** the gridded FIRMS dots (KI-1) crowd the places in the burning belts; the reviewer wants a toggle: places / fires / both.
+- **Checked:** both are always-on MapLibre layers (`L_PLACES`, `L_FIRE_GLOW`, `L_FIRE_DOT`); there is no visibility state for either in `Dashboard.tsx`, and the legend's "active fire detection (FIRMS)" line is text only.
+- **Fix sketch (S3 + S4, small):** one `layers: "both" | "places" | "fires"` state in `Dashboard.tsx` (contracts §5 lists the globe props; this is one additive prop), a three-way segmented control in the controls row next to NOW / NEXT 14 DAYS, and `setLayoutProperty(id, "visibility", …)` on the three layers. Make the legend's fire line the toggle for fires so the two stay together. Default "both".
+
+### KI-15 · Globe: zoom only by scroll wheel; no buttons, nothing for keyboard users
+- **Seen:** no zoom-in / zoom-out buttons; keyboard users cannot zoom or pan.
+- **Checked:** `Globe.tsx` creates the map with `dragRotate: false` and adds no `NavigationControl`; MapLibre's built-in keyboard handler (`+`/`-`, arrows) only works once the canvas has focus, and nothing makes it focusable or says so.
+- **Fix sketch (S3, small):** `map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right")` gives + / − buttons that are real `<button>`s (tab-reachable, with aria-labels); set `tabindex="0"` and an `aria-label` on the canvas container so `+`/`-`/arrows work after a Tab; style the control with the DESIGN.md tokens (the default MapLibre CSS is white). A "reset view" button (home) in the same group is cheap and useful.
+
 ## Fixed
 - 14 Nov · Open-Meteo day 16 null over Europe (21 places): filled from `gfs_seamless` in the ingest; G2 requires 16 days.
 - 14 Nov · Open-Meteo per-IP quota ban: incremental `past_days=2`, cache reuse, fail-fast with cache fallback.
