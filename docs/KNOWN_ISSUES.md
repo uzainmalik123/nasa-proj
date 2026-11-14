@@ -6,17 +6,17 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 
 ## Open
 
-### KI-1 · Globe: hundreds of small grey dots that "do nothing"
-- **Seen:** in wildfire / next 14 days mode, 256 of the 554 places render as 3 px grey dots with no colour.
-- **Checked:** live `risk.json` has every place with a probability, a category and a 16-day forecast; none is missing data. The dots are the places whose wildfire probability is under the first ramp stop (15 %, today's median): `globe/colour.ts` draws anything below `RISK_FLOOR` as a muted 3 px dot per DESIGN.md §4. They are still clickable and searchable.
-- **Cause:** a design rule, not a data gap. Half the watch list is "low" by construction (the stops are today's 50 / 80 / 95 / 99th percentiles), and "low" is rendered as near-invisible.
-- **Fix sketch (S3, small):** either give low-risk places a visible muted-but-readable dot (e.g. 4 px at 60 % opacity in the ramp's first colour) with a legend entry "low (< 15 %)", or hide them behind a "show low-risk places" toggle. The legend should say what a grey dot means either way.
+### KI-1 · Globe: the red-outlined dots with a white glow sit on a grid and ignore the mouse
+- **Seen:** thousands of small dots with a white centre and red outline, visibly aligned to a grid; hovering does nothing, so they read as fake.
+- **Checked:** they are the FIRMS active-fire layer (`fires_24h.json`, legend "active fire detection (FIRMS)"): 35,033 VIIRS NOAA-21 detections from the last 24 h, real satellite data, published as **0.25° bins** (`[lon, lat, count, max_frp]`, centres on the grid, contracts §3), which is why they line up. The globe draws one glow + one dot per bin, radius by count (`globe/Globe.tsx` fire layers), but only the places layer has `mousemove` / `click` handlers; the fire layers have `count` and `frp` properties and no handler at all.
+- **Cause:** a deliberate aggregation (binning keeps the file at 170 KB instead of ~2 MB of raw points) with no tooltip and no legend text saying so.
+- **Fix sketch (S3, small):** add a hover handler on the fire-dot layer showing "N detections · max FRP x MW · 0.25° cell · VIIRS NOAA-21 · newest HH:MMZ"; say "0.25° cells" in the legend; make the dot radius grow with count more visibly so a 200-detection cell is not the same mark as a single one. If the grid look itself is the objection: S1 can bin finer (0.1°, ~4× the bins) or publish raw points above a zoom level; decide after the tooltip lands.
 
-### KI-2 · "Why doesn't every place have a 14-day prediction?"
-- **Seen:** reviewer's impression from the globe and the hazards table.
-- **Checked:** live data: 554 of 554 places have 16 non-null forecast days, a wildfire probability, drought index, heat days and rain probability; `fwi_forecast` has no nulls; G2 reads 554/554. The table shows the top 19 by probability because the panel is a ranked list, not the whole set.
-- **Cause:** almost certainly the same as KI-1: the grey dots read as "no prediction". If the reviewer saw an actual empty hazard card or "–" somewhere, that is a separate bug and needs the place name.
-- **Fix sketch:** KI-1 plus a visible "554 places · 554 assessed" line in the hazards panel header. Reopen with a place name if a real gap is found.
+### KI-2 · Globe: 256 low-risk places render as near-invisible grey dots
+- **Seen:** in wildfire mode half the watch list is a 3 px grey dot with no colour.
+- **Checked:** live `risk.json` has every place with a probability, a category and a 16-day forecast; none is missing data. Places with wildfire probability under the first ramp stop (15 %, today's median) are drawn as a muted 3 px dot per DESIGN.md §4 (`globe/colour.ts` `RISK_FLOOR`). They are clickable and searchable.
+- **Cause:** a design rule, not a data gap; the legend does not say what a grey dot means.
+- **Fix sketch (S3, small):** a legible "low (< 15 %)" style and a legend entry, or a "show low-risk places" toggle.
 
 ### KI-3 · "Not every place has the now temperature"
 - **Seen:** some places show no current temperature (location on screen not yet pinned down: globe tooltip, place panel anomaly row, or the heat card).
