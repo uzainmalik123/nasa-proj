@@ -148,6 +148,7 @@ export default function Dashboard() {
           flyTo={s.flyTo}
           gibsLayer={s.gibsLayer}
           gibsDate={s.gibsDate}
+          onGibsChange={(gibsLayer, gibsDate) => setS((p) => ({ ...p, gibsLayer, gibsDate }))}
           continent={s.continent}
         />
 
@@ -175,7 +176,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* controls, PRD §5: search (S3-B) · mode · hazard · trend variable · continent */}
+          {/* controls, PRD §5: search (S3-B) · mode · hazard · trend variable · continent; imagery toggles + slider sit on the globe (M-GIBS) */}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/55 px-2.5 py-1.5 backdrop-blur">
             <Search places={places} onPick={(i) => select(i, true)} />
             <Toggle
@@ -200,12 +201,6 @@ export default function Dashboard() {
               value={s.continent ?? "world"}
               options={[["world", "world"], ...continents.map((c): [string, string] => [c, c])]}
               onChange={(v) => setS((p) => ({ ...p, continent: v === "world" ? null : v }))}
-            />
-            <Select
-              label="imagery"
-              value={s.gibsLayer ?? "none"}
-              options={[["none", "none"], ...(Object.keys(GIBS_LAYERS) as GibsLayerKey[]).map((k): [string, string] => [k, GIBS_LAYERS[k].label])]}
-              onChange={(v) => setS((p) => ({ ...p, gibsLayer: v === "none" ? null : (v as GibsLayerKey) }))}
             />
           </div>
         </div>
