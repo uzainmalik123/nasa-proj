@@ -91,7 +91,9 @@ TREND_LABELS = ["rising", "falling", "stable", "insufficient"]
 # Each maps category → the lowest value that enters it; anything below the
 # "elevated" threshold is "low". Drought is a deficit index, so it descends.
 CATEGORY_THRESHOLDS = {
-    "wildfire": {"elevated": 0.10, "high": 0.25, "extreme": 0.50},  # probability
+    # probability; ≥ 3 detections in 14 days is common in the burning belts (base rate
+    # 0.29), so the lines sit near today's 60th / 85th / 95th percentiles (S2-B, 14 Nov)
+    "wildfire": {"elevated": 0.30, "high": 0.60, "extreme": 0.90},
     "drought": {"elevated": -0.5, "high": -1.0, "extreme": -1.5},  # std. index
     "heat": {"elevated": 1, "high": 3, "extreme": 7},  # days above 95th pct
     "rain": {"elevated": 0.10, "high": 0.25, "extreme": 0.50},  # probability
