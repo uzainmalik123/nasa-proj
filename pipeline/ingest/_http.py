@@ -17,6 +17,19 @@ import requests
 log = logging.getLogger("ingest.http")
 
 RETRY_STATUS = {429, 500, 502, 503, 504}
+# a 429 whose Retry-After is longer than this is a quota ban (Open-Meteo answers
+# with the seconds until midnight UTC); raise at once instead of retrying
+RETRY_AFTER_MAX_S = 300
+
+
+class RateLimited(requests.HTTPError):
+    """429 with a Retry-After beyond ``RETRY_AFTER_MAX_S``: do not retry this run."""
+
+    def __init__(self, label: str, retry_after: int, response=None) -> None:
+        super().__init__(f"{label}: rate limited for {retry_after} s", response=response)
+        self.retry_after = retry_after
+
+
 UA = "earth-trend-detective/0.1 (hackathon pipeline; github.com/uzainmalik123/nasa-proj)"
 
 
@@ -87,6 +100,8 @@ def get(
                 f" (Retry-After {retry_after})" if retry_after else "",
             )
             if retry_after and retry_after.isdigit():
+                if r.status_code == 429 and int(retry_after) > RETRY_AFTER_MAX_S:
+                    raise RateLimited(label or url, int(retry_after), response=r)
                 time.sleep(min(int(retry_after), 120))
                 continue
         if attempt < tries:
