@@ -67,3 +67,21 @@ Run log excerpt:
 ## Contract notes
 
 See `docs/contracts.md` change log, 2026-11-14 09:20 (additive columns `acq_date`, `satellite` on `firms/{date}.parquet`; new `cache/firms_live.parquet`; dense `firms_counts.parquet`; `firms/_history.json` and `places.parquet` on the data branch; forecast `wind_max` is 10 m wind in m/s).
+
+## Addendum · 2026-11-14 13:50 PKT · S2-A follow-up (forecast means + past_days)
+
+- contracts.md line committed as requested: commit 5069f7d on `s1-ingest` ("2026-11-14 13:20 · S1: forecast/{run_id}.parquet also carries Open-Meteo past_days=92 …").
+- The 06:00 UTC cron did not fire (Actions lists only the 04:15 dispatch); both workflows show `active`. Dispatched manually from `s1-ingest` at 08:27 UTC with default inputs, no other run in flight.
+- Run: https://github.com/uzainmalik123/nasa-proj/actions/runs/43575888601 · **success** · 15 min 40 s (pipeline step 903 s; history skipped, 76/76 chunks already cached; POWER 554/554 newest 2026-11-11; forecast 554/554).
+- Data branch now has `cache/forecast/20261114T0827Z.parquet` (501 KB, 940 files total).
+
+`cache/forecast/20261114T0827Z.parquet`, as published:
+
+```
+columns      place_id, date, tmax, rain_mm, rh_min, rh_mean, wind_max, wind_mean, et0
+total rows   59,832 · 554 places · 108 rows per place (min 108, max 108)
+lahore-pk    108 rows · 2026-08-14 → 2026-11-29 · 16 rows >= today · all-null rows: 0
+all places   all-null rows per place: min 0, max 1
+```
+
+Note: the earlier local probe (05:40 UTC) showed the oldest 26 days all-null; this run from the Actions runner at 08:42 UTC returned every past day populated (max 1 null row anywhere). Treat the contracts line's "~26 null" as the worst case; S2's calibrator gets up to 92 overlap days here, not ~63.
