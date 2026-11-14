@@ -158,17 +158,28 @@ export function pickColouring(
   };
 }
 
-/** Feature state for every place under the given colouring. */
+/** Opacity of a place outside the active continent filter. */
+export const FILTERED_OPACITY = 0.12;
+
+/**
+ * Feature state for every place under the given colouring. `keep` is the set
+ * of indices inside the continent filter; places outside it are dimmed to a
+ * 3 px muted dot at FILTERED_OPACITY. null = no filter.
+ */
 export function pointStates(
   c: Colouring,
   n: number,
   risk: { now: RiskNow[] } | null,
   trends: TrendsFile | null,
+  keep: Set<number> | null = null,
 ): PointState[] {
   const out: PointState[] = new Array(n);
   const dim: PointState = { v: 0, color: P.muted, o: 0.5, sig: false };
+  const off: PointState = { v: 0, color: P.muted, o: FILTERED_OPACITY, sig: false };
+  const skip = (i: number) => keep != null && !keep.has(i);
   if (c.kind === "risk") {
     for (let i = 0; i < n; i++) {
+      if (skip(i)) { out[i] = off; continue; }
       const r = risk?.now[i];
       if (!r) { out[i] = dim; continue; }
       const v = hazardMagnitude(c.hazard, r);
@@ -178,6 +189,7 @@ export function pointStates(
   }
   const vi = trends ? trends.variables.indexOf(c.variable) : -1;
   for (let i = 0; i < n; i++) {
+    if (skip(i)) { out[i] = off; continue; }
     const s = trends?.long.slope[i]?.[vi];
     const p = trends?.long.p[i]?.[vi];
     if (s == null || p == null || p >= 0.05) { out[i] = dim; continue; }
@@ -185,6 +197,14 @@ export function pointStates(
     out[i] = { v: Math.max(TREND_FLOOR, Math.abs(t)), color: trendColour(t), o: 1, sig: true };
   }
   return out;
+}
+
+/** Indices of places on `continent`; null when no continent is chosen. */
+export function continentSet(places: { continent: string }[], continent: string | null | undefined): Set<number> | null {
+  if (!continent) return null;
+  const set = new Set<number>();
+  places.forEach((p, i) => { if (p.continent === continent) set.add(i); });
+  return set;
 }
 
 // ---- formatting ------------------------------------------------------------

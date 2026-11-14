@@ -11,6 +11,7 @@ import { P } from "@/lib/palette";
 import { HAZARDS, VARIABLES, type Data, type Hazard, type Mode, type Variable } from "@/lib/types";
 import type { FlyTarget, GibsLayerKey } from "./globe/Globe";
 import { GIBS_LAYERS } from "./globe/Globe";
+import Search from "./globe/Search";
 import Freshness, { useNow } from "./panels/Freshness";
 import HazardsTable from "./panels/HazardsTable";
 import Kpis from "./panels/Kpis";
@@ -131,6 +132,7 @@ export default function Dashboard() {
           flyTo={s.flyTo}
           gibsLayer={s.gibsLayer}
           gibsDate={s.gibsDate}
+          continent={s.continent}
         />
 
         {/* title block, DESIGN §3 */}
@@ -155,8 +157,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* controls, PRD §5: mode · hazard · trend variable · continent (search is S3-B) */}
+          {/* controls, PRD §5: search (S3-B) · mode · hazard · trend variable · continent */}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/55 px-2.5 py-1.5 backdrop-blur">
+            <Search places={places} onPick={(i) => select(i, true)} />
             <Toggle
               value={s.mode}
               options={[["now", "Now"], ["next14", "Next 14 days"]]}

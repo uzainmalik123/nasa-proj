@@ -2,7 +2,8 @@
 // Globe.tsx · DESIGN.md §4, contracts.md §5. MapLibre globe with places
 // coloured by the selected hazard (mode "next14") or by the selected trend
 // variable's 10-year slope (mode "now"), live FIRMS bins on top, optional
-// GIBS raster underneath. Owns no React state: everything is props → map.
+// GIBS raster underneath (off until `gibsLayer` is set), continent filter
+// dims places elsewhere. Owns no React state: everything is props → map.
 import { useEffect, useMemo, useRef } from "react";
 import {
   Map as MapLibreMap, setWorkerUrl,
@@ -13,7 +14,7 @@ import { MAPLIBRE_WORKER_URL } from "@/lib/maplibre-worker";
 import { P } from "@/lib/palette";
 import type { FiresFile, Hazard, Mode, Place, RiskFile, TrendsFile, Variable } from "@/lib/types";
 import Legend from "./Legend";
-import { hazardText, pickColouring, pointStates, trendText, type Colouring } from "./colour";
+import { continentSet, hazardText, pickColouring, pointStates, trendText, type Colouring } from "./colour";
 
 if (typeof window !== "undefined") setWorkerUrl(MAPLIBRE_WORKER_URL);
 
@@ -53,8 +54,10 @@ export interface GlobeProps {
   selected: number | null;
   onSelect: (i: number | null) => void;
   flyTo: FlyTarget | null;
-  gibsLayer: GibsLayerKey | null;
+  gibsLayer: GibsLayerKey | null; // null (the default) = no raster; a key turns the GIBS overlay on
   gibsDate: string | null; // YYYY-MM-DD; defaults to today minus the layer's lag
+  /** Continent name; places elsewhere are dimmed (S3-B). null/undefined = world. */
+  continent?: string | null;
 }
 
 const SRC_PLACES = "places";
@@ -115,14 +118,25 @@ export function gibsDefaultDate(key: GibsLayerKey): string {
   return new Date(Date.now() - GIBS_LAYERS[key].lagDays * 86_400_000).toISOString().slice(0, 10);
 }
 
-function gibsTiles(key: GibsLayerKey, date: string): { tiles: string[]; maxzoom: number } {
+/**
+ * PRD §6 GIBS WMTS URL with {layer} {date} {level} {ext} placeholders; {z} {y}
+ * {x} are left for MapLibre. M-GIBS swaps {date} per slider step.
+ */
+export const GIBS_WMTS_TEMPLATE =
+  "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/{layer}/default/{date}/GoogleMapsCompatible_Level{level}/{z}/{y}/{x}.{ext}";
+
+/** Fill the template for one layer and one YYYY-MM-DD. */
+export function gibsTileUrl(key: GibsLayerKey, date: string): string {
   const l = GIBS_LAYERS[key];
-  return {
-    tiles: [
-      `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l.id}/default/${date}/GoogleMapsCompatible_Level${l.level}/{z}/{y}/{x}.${l.ext}`,
-    ],
-    maxzoom: l.level,
-  };
+  return GIBS_WMTS_TEMPLATE
+    .replace("{layer}", l.id)
+    .replace("{date}", date)
+    .replace("{level}", String(l.level))
+    .replace("{ext}", l.ext);
+}
+
+function gibsTiles(key: GibsLayerKey, date: string): { tiles: string[]; maxzoom: number } {
+  return { tiles: [gibsTileUrl(key, date)], maxzoom: GIBS_LAYERS[key].level };
 }
 
 /** Everything the map-side handlers need from the latest render. */
@@ -146,6 +160,7 @@ function valueText(l: Latest, i: number): string {
 export default function Globe(props: GlobeProps) {
   const {
     places, risk, trends, fires, mode, hazard, trendVar, selected, onSelect, flyTo, gibsLayer, gibsDate,
+    continent = null,
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
@@ -301,15 +316,15 @@ export default function Globe(props: GlobeProps) {
     });
   }, [places]);
 
-  // ---- colour + radius via feature state ----------------------------------
+  // ---- colour + radius via feature state (continent filter dims the rest) --
   useEffect(() => {
     runWhenReady(stateRef.current, (map) => {
-      const states = pointStates(colouring, places.length, risk, trends);
+      const states = pointStates(colouring, places.length, risk, trends, continentSet(places, continent));
       for (let i = 0; i < states.length; i++) {
         map.setFeatureState({ source: SRC_PLACES, id: i }, states[i]);
       }
     });
-  }, [places, risk, trends, colouring]);
+  }, [places, risk, trends, colouring, continent]);
 
   // ---- selected ring ------------------------------------------------------
   useEffect(() => {
