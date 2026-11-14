@@ -95,6 +95,11 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 - **Checked:** both workflows are `active`; the dispatch path is green (14:23Z). GitHub delays or drops scheduled runs on busy days and for new repositories; nothing in the YAML is wrong.
 - **Fix sketch (S1, none unless it persists):** if no scheduled run goes green overnight, dispatch manually before the pitch and add a second cron line offset by 30 min (`30 */3 * * *`) so a dropped slot is covered.
 
+### KI-17 · Mobile: the globe, the site's main attraction, gets a sliver of the screen · **priority**
+- **Seen:** on a phone the layout keeps the desktop split: the 560 px sidebar takes most of the width and the globe is squeezed into a narrow strip on the left. The thing the site is about is barely visible.
+- **Checked:** `Dashboard.tsx` is a single `flex h-screen w-screen overflow-hidden` row: `<section flex: 1.15 min-w-0>` for the globe and `<aside class="w-[560px] shrink-0">` for the panels. There is no breakpoint anywhere in the dashboard (`grep md:|lg:|sm:` finds nothing), so below ~1100 px the fixed-width aside wins and the globe section collapses; `overflow-hidden` on the root also stops the page from scrolling, so nothing can be reached by swiping either.
+- **Fix sketch (S4 owns `Dashboard.tsx`, S3 for globe resize; medium):** below `lg` (1024 px) stack instead of split: root `flex-col` with the globe section `h-[60vh] min-h-[320px]` on top and the aside `w-full` below, scrolling the page rather than the aside (`overflow-y-auto` on the root, drop `sidebar-scroll` at that breakpoint). The controls row (NOW / NEXT 14 DAYS, hazard, trend, continent, imagery) wraps to two rows. Call `map.resize()` after the layout change so MapLibre fills the new box. The 560 px aside and 1.15 flex stay above `lg`. Cheaper interim: a "map / panels" tab bar at the top on small screens that shows one at a time, globe first.
+
 ## Fixed
 - 14 Nov · INTEGRATE d1: KI-7 step 1a (parallel fetch + progress pill), see above.
 - 14 Nov · Open-Meteo day 16 null over Europe (21 places): filled from `gfs_seamless` in the ingest; G2 requires 16 days.
