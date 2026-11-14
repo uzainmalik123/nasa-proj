@@ -91,7 +91,10 @@ def main(limit: int | None) -> None:
     firms_start = pd.Timestamp(today - timedelta(days=365))
     firms_dates = pd.date_range(firms_start, today, freq="D")
     counts = []
-    fc_dates = pd.date_range(today, periods=config.FORECAST_DAYS, freq="D")
+    past_days = 92  # Open-Meteo ``past_days``: forecast cache overlaps POWER
+    fc_dates = pd.date_range(
+        today - timedelta(days=past_days), periods=past_days + config.FORECAST_DAYS, freq="D"
+    )
     fc = []
     run_id = datetime.now(UTC).strftime(config.RUN_ID_FORMAT)
     for _, p in places.iterrows():
@@ -111,19 +114,29 @@ def main(limit: int | None) -> None:
                 }
             )
         )
-        tail = power.tail(16)
+        # the "forecast": the synthetic truth plus noise, with a per-place humidity
+        # bias and 10 m winds, so the per-place calibration has something to undo
+        truth = power.set_index(pd.to_datetime(power["date"])).reindex(fc_dates)
+        truth = truth.ffill().bfill()
+        nf = len(fc_dates)
+        rh_bias = RNG.choice([0.0, 0.0, 15.0, -15.0, 30.0])
+        rh_true = truth["rh_pct"].to_numpy()
         fc.append(
             pd.DataFrame(
                 {
                     "place_id": p["id"],
                     "date": [d.date().isoformat() for d in fc_dates],
-                    "tmax": (tail["t2m_max"].to_numpy() + RNG.normal(0, 1, 16)).round(1),
+                    "tmax": (truth["t2m_max"].to_numpy() + RNG.normal(0, 1, nf)).round(1),
                     "rain_mm": np.clip(
-                        tail["rain_mm"].to_numpy() + RNG.normal(0, 1, 16), 0, None
+                        truth["rain_mm"].to_numpy() + RNG.normal(0, 1, nf), 0, None
                     ).round(1),
-                    "rh_min": np.clip(tail["rh_pct"].to_numpy() - 15, 3, 100).round(0),
-                    "wind_max": (tail["wind_ms"].to_numpy() * 1.8).round(2),
-                    "et0": RNG.uniform(1, 6, 16).round(2),
+                    "rh_min": np.clip(rh_true + rh_bias - 15, 3, 100).round(0),
+                    "rh_mean": np.clip(rh_true + rh_bias + RNG.normal(0, 3, nf), 3, 100).round(0),
+                    "wind_max": (truth["wind_ms"].to_numpy() * 1.8).round(2),
+                    "wind_mean": (truth["wind_ms"].to_numpy() / 0.75 + RNG.normal(0, 0.2, nf))
+                    .clip(0)
+                    .round(2),
+                    "et0": RNG.uniform(1, 6, nf).round(2),
                 }
             )
         )

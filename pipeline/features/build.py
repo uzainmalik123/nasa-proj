@@ -12,7 +12,9 @@ Columns (all float32 unless stated; NaN where not computable):
   fwi_obs_7d                           mean daily fire weather index, last 7 days
   fwi_14d fwi_14d_max                  mean / max daily index over the next 14 days:
                                        observed POWER where it exists (perfect
-                                       prognosis), Open-Meteo forecast beyond it
+                                       prognosis), Open-Meteo forecast beyond it,
+                                       mapped into POWER units per place when the
+                                       forecast cache carries past days
   future_observed_days (int)           how many of those 14 days were observed
   fires_7d fires_30d days_since_fire   FIRMS detections within RADIUS_KM
   *_trend_10y *_trend_90d              Sen's slopes from trends.json (per place)
@@ -52,10 +54,17 @@ RAIN_DAY_MM = 1.0  # a "rain day" for days_since_rain
 MAX_DAYS_SINCE = 365
 Z_CLIP = 5.0
 # Open-Meteo → POWER-like units for the forecast slots. POWER rh_pct is the daily
-# mean at 2 m, the forecast carries the daily minimum; POWER wind is the 2 m
-# daily mean, the forecast the 10 m daily max. Rough constants, S2-B may tune.
+# mean at 2 m and wind_ms the 2 m daily mean. The forecast cache carries rh_min /
+# wind_max (contracts §4) and, since S1's 2026-11-14 change, rh_mean / wind_mean.
+# When the cache also carries past days (Open-Meteo ``past_days``), every place
+# gets its own linear map fitted on the overlap with POWER (``calibrate``);
+# these constants are the fallback. Medians across 554 places on 2026-11-14:
+# rh_obs - rh_min = +18.8, wind_obs / wind_max = 0.48; 10 m → 2 m mean ≈ 0.75.
 FC_RH_MIN_TO_MEAN = 19.0
 FC_WIND_MAX10_TO_MEAN2 = 0.48
+FC_WIND_MEAN10_TO_MEAN2 = 0.75
+CALIB_MIN_DAYS = 30  # overlap days needed for a per-place fit
+CALIB_SLOPE = (0.3, 2.0)  # slope clip for the per-place linear map
 
 TREND_VARS = {
     "rain_mm": "rain",
@@ -128,28 +137,68 @@ def fire_weather(tmax: pd.Series, rh: pd.Series, wind: pd.Series, dsr: pd.Series
     return (danger * wind_f * dry_f).clip(0, 1)
 
 
+def forecast_to_power(fc: pd.DataFrame) -> pd.DataFrame:
+    """Forecast rows (date index) in POWER-like columns, uncalibrated."""
+    rh = fc["rh_mean"] if "rh_mean" in fc else pd.Series(np.nan, index=fc.index)
+    rh = rh.fillna((fc["rh_min"] + FC_RH_MIN_TO_MEAN).clip(upper=100))
+    if "wind_mean" in fc:
+        wind = (fc["wind_mean"] * FC_WIND_MEAN10_TO_MEAN2).fillna(
+            fc["wind_max"] * FC_WIND_MAX10_TO_MEAN2
+        )
+    else:
+        wind = fc["wind_max"] * FC_WIND_MAX10_TO_MEAN2
+    return pd.DataFrame(
+        {
+            "rain_mm": fc["rain_mm"],
+            "tmax_c": fc["tmax"],
+            "rh_pct": rh.clip(0, 100),
+            "wind_ms": wind.clip(lower=0),
+            "soil_wet": np.nan,
+        }
+    )
+
+
+def calibrate(fc_path: pd.DataFrame, obs: pd.DataFrame) -> tuple[pd.DataFrame, bool]:
+    """Map forecast tmax / rh / wind into POWER units with a per-place linear fit.
+
+    Fitted on dates both frames cover (Open-Meteo past days vs observed POWER),
+    applied to every forecast row. Returns (mapped frame, whether a fit was used).
+    """
+    both = fc_path.index.intersection(obs.index)
+    if len(both) < CALIB_MIN_DAYS:
+        return fc_path, False
+    out = fc_path.copy()
+    for col in ("tmax_c", "rh_pct", "wind_ms"):
+        x = fc_path.loc[both, col].to_numpy(dtype="float64")
+        y = obs.loc[both, col].to_numpy(dtype="float64")
+        ok = np.isfinite(x) & np.isfinite(y)
+        if ok.sum() < CALIB_MIN_DAYS or np.ptp(x[ok]) < 1e-6:
+            continue
+        b, a = np.polyfit(x[ok], y[ok], 1)
+        b = float(np.clip(b, *CALIB_SLOPE))
+        a = float(y[ok].mean() - b * x[ok].mean())
+        out[col] = a + b * fc_path[col]
+    out["rh_pct"] = out["rh_pct"].clip(0, 100)
+    out["wind_ms"] = out["wind_ms"].clip(lower=0)
+    return out, True
+
+
 def weather_path(
     daily: pd.DataFrame, forecast: pd.DataFrame | None, today: date
-) -> tuple[pd.DataFrame, pd.Timestamp | None]:
-    """Observed POWER, a ≤ POWER-lag gap filled, then the forecast. Returns (path, last_observed).
+) -> tuple[pd.DataFrame, pd.Timestamp | None, bool]:
+    """Observed POWER, then the forecast (calibrated per place when past days overlap).
 
-    Gap days (after the last POWER day, before the forecast starts) carry the
-    last observed tmax/rh/wind/soil and the climatological mean daily rain.
+    Returns (path, last observed POWER day, calibrated). Days after the last
+    POWER day that the forecast does not cover carry the last observed
+    tmax/rh/wind/soil and the climatological mean daily rain.
     """
     obs = daily[["rain_mm", "tmax_c", "rh_pct", "wind_ms", "soil_wet"]].copy()
     last_obs = obs["tmax_c"].last_valid_index()
     end = pd.Timestamp(today) + pd.Timedelta(days=config.FORECAST_DAYS)
+    calibrated = False
     if forecast is not None and not forecast.empty:
-        fc = forecast.set_index("date").sort_index()
-        fc_path = pd.DataFrame(
-            {
-                "rain_mm": fc["rain_mm"],
-                "tmax_c": fc["tmax"],
-                "rh_pct": (fc["rh_min"] + FC_RH_MIN_TO_MEAN).clip(upper=100),
-                "wind_ms": fc["wind_max"] * FC_WIND_MAX10_TO_MEAN2,
-                "soil_wet": np.nan,
-            }
-        )
+        fc_path = forecast_to_power(forecast.set_index("date").sort_index())
+        fc_path, calibrated = calibrate(fc_path, obs.dropna(subset=["tmax_c"]))
         if last_obs is not None:
             fc_path = fc_path[fc_path.index > last_obs]
         obs = pd.concat([obs[obs.index <= (last_obs or obs.index[-1])], fc_path])
@@ -160,7 +209,7 @@ def weather_path(
     for col in ("tmax_c", "rh_pct", "wind_ms", "soil_wet"):
         path[col] = path[col].ffill(limit=max(1, config.G3_POWER_MAX_AGE_D + 1))
     path.loc[gap, "rain_mm"] = rain_mean[path.index[gap].day_of_year]
-    return path, last_obs
+    return path, last_obs, calibrated
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +223,7 @@ def place_features(
     firms_range: tuple[pd.Timestamp, pd.Timestamp] | None,
     trend_slopes: dict[str, float | None],
 ) -> pd.DataFrame:
-    path, last_obs = weather_path(daily, forecast, today)
+    path, last_obs, calibrated = weather_path(daily, forecast, today)
     # backward-looking windows run on the gap-filled path (observed POWER plus
     # ≤ POWER-lag days carried forward) so the newest rows are not NaN; the
     # climatology they are compared with comes from the observed record only.
@@ -235,6 +284,7 @@ def place_features(
     out["doy_sin"] = np.sin(doy)
     out["doy_cos"] = np.cos(doy)
     out.insert(0, "place_id", str(place["id"]))
+    out.attrs["calibrated"] = calibrated
     return out
 
 
@@ -281,6 +331,7 @@ def build(
     rows = pd.date_range(start, pd.Timestamp(today), freq="D")
     frames = []
     missing = 0
+    n_calib = 0
     t0 = time.perf_counter()
     for i, place in places.iterrows():
         pid = str(place["id"])
@@ -295,6 +346,7 @@ def build(
             fc = fc.dropna(subset=["tmax"]) if not fc.empty else None
         f = place_features(place, daily, fc, rows, today, firms_range, trend_slopes_for(trends, i))
         f.insert(1, "place", int(i))
+        n_calib += int(f.attrs.get("calibrated", False))
         frames.append(f)
         if (i + 1) % 100 == 0:
             log.info("features %d/%d · %.1fs", i + 1, len(places), time.perf_counter() - t0)
@@ -319,10 +371,12 @@ def build(
     df["place"] = df["place"].astype("int32")
     df["date"] = df["date"].dt.date.astype(str)
     log.info(
-        "features done · %d rows · %d places (%d without POWER) · %.1fs",
+        "features done · %d rows · %d places (%d without POWER) · forecast calibrated per "
+        "place for %d · %.1fs",
         len(df),
         len(frames),
         missing,
+        n_calib,
         time.perf_counter() - t0,
     )
     return df
