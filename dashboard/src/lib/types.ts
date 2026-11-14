@@ -87,6 +87,34 @@ export interface ModelInfo {
   brier: number;
   holdout: [string, string];
 }
+// movers / continents: additive blocks, contracts.md note 2026-11-14 23:00 PKT (S2-C).
+// Older runs on the data branch lack them; lib/aggregate.ts recomputes the same
+// thing in the browser when they are missing.
+export interface MoverRow {
+  place: number;          // index into places
+  id: string;
+  value: number | null;   // today's headline (p / index / days_above)
+  ago: number | null;     // hindcast value on `since`
+  delta: number | null;   // value − ago, native units; for drought a rising mover has delta < 0
+  category: Category;
+  exposure: number;
+}
+export interface MoversBlock {
+  key: "p" | "index" | "days_above";
+  since: string;          // history day 7 days before today
+  up: MoverRow[];         // ≤ 10, most risk gained first
+  down: MoverRow[];       // ≤ 10, most risk lost first
+}
+export type Movers = Record<Hazard, MoversBlock>;
+export type CategoryCounts = Record<Category, number>;
+export interface Continents {
+  names: string[];                               // sorted, continents present
+  n: number[];                                   // places per continent
+  pop: number[];                                 // summed exposure
+  counts: Record<Hazard, CategoryCounts[]>;      // [continent]
+  mean_now: Record<Hazard, (number | null)[]>;   // [continent], headline mean
+  mean_history: Record<Hazard, (number | null)[][]>; // [continent][day], history_days axis
+}
 export interface RiskFile {
   meta: Meta;
   hazards: Hazard[];
@@ -100,6 +128,8 @@ export interface RiskFile {
   drivers: Drivers[];                           // per place
   text: HazardText[];                           // per place
   model: ModelInfo;
+  movers?: Movers;
+  continents?: Continents;
 }
 
 // ---- series.json ----------------------------------------------------------

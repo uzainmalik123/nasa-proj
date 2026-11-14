@@ -11,12 +11,14 @@ import { P } from "@/lib/palette";
 import { HAZARDS, VARIABLES, type Data, type Hazard, type Mode, type Variable } from "@/lib/types";
 import type { FlyTarget, GibsLayerKey } from "./globe/Globe";
 import { GIBS_LAYERS } from "./globe/Globe";
+import Continents from "./panels/Continents";
 import Feed from "./panels/Feed";
 import Search from "./globe/Search";
 import Freshness, { useNow } from "./panels/Freshness";
 import Honesty from "./panels/Honesty";
 import HazardsTable from "./panels/HazardsTable";
 import Kpis from "./panels/Kpis";
+import Movers from "./panels/Movers";
 import PlacePanel from "./panels/PlacePanel";
 import Sources from "./panels/Sources";
 import TrendsTable from "./panels/TrendsTable";
@@ -215,6 +217,22 @@ export default function Dashboard() {
           onTrendVar={(trendVar) => setS((p) => ({ ...p, trendVar }))}
           onHazard={(hazard) => setS((p) => ({ ...p, hazard }))}
           onClear={() => select(null)}
+        />
+        <Movers
+          places={places}
+          risk={data?.risk ?? null}
+          hazard={s.hazard}
+          selected={s.selected}
+          filter={filter}
+          continent={s.continent}
+          onPick={(i) => select(i, true)}
+        />
+        <Continents
+          places={places}
+          risk={data?.risk ?? null}
+          hazard={s.hazard}
+          continent={s.continent}
+          onPick={(continent) => setS((p) => ({ ...p, continent }))}
         />
         <Feed feed={data?.feed ?? null} places={places} selected={s.selected} hazard={s.hazard} filter={filter} onPick={pickAlert} />
         <Honesty honesty={data?.honesty ?? null} />
