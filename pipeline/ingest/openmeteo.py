@@ -13,6 +13,12 @@ wind, POWER is 2 m). Open-Meteo is a non-NASA supplement and is labelled
 Measured 2026-11-14: one place with ``past_days=92`` answers in ~1 s, 20
 places in one request in ~0.8 s, so batching brings 554 places from ~15 min
 (the G1 incremental budget) down to under a minute.
+
+The default model mix ("best_match") ends at day 15 over Europe (its tail is
+ECMWF IFS, a 15-day model), so ~21 European places came back with an all-null
+day 16. Places with any null forecast day are re-fetched from
+``FALLBACK_MODEL`` (GFS, 16 days everywhere) and only those rows are patched,
+so every place leaves with ``FORECAST_DAYS`` real values.
 """
 
 from __future__ import annotations
@@ -50,7 +56,9 @@ DAILY = ",".join(COLUMNS)  # superset of config.OPENMETEO_DAILY
 # today, same columns). S2 calibrates the forecast per place on the overlap
 # with POWER. Rows per place: ~92 + FORECAST_DAYS. No "future only" filter.
 PAST_DAYS = int(os.environ.get("OPENMETEO_PAST_DAYS", "92"))
+FALLBACK_MODEL = os.environ.get("OPENMETEO_FALLBACK_MODEL", "gfs_seamless")
 SCHEMA = ["place_id", "date", *COLUMNS.values()]
+VALUES = list(COLUMNS.values())
 
 
 def _frame(place_id: str, daily: dict) -> pd.DataFrame:
@@ -61,22 +69,27 @@ def _frame(place_id: str, daily: dict) -> pd.DataFrame:
     return df[SCHEMA]
 
 
-def fetch_batch(batch: list[tuple[str, float, float]], pacer: Pacer) -> list[pd.DataFrame]:
+def fetch_batch(
+    batch: list[tuple[str, float, float]], pacer: Pacer, model: str | None = None
+) -> list[pd.DataFrame]:
     """One request for up to ``BATCH`` places; the reply is a list in request order."""
+    params = {
+        "latitude": ",".join(f"{lat:.4f}" for _, lat, _ in batch),
+        "longitude": ",".join(f"{lon:.4f}" for _, _, lon in batch),
+        "daily": DAILY,
+        "forecast_days": config.FORECAST_DAYS,
+        "past_days": PAST_DAYS,
+        "wind_speed_unit": "ms",
+        "timezone": "UTC",
+    }
+    if model:
+        params["models"] = model
     r = get(
         config.OPENMETEO_API,
-        params={
-            "latitude": ",".join(f"{lat:.4f}" for _, lat, _ in batch),
-            "longitude": ",".join(f"{lon:.4f}" for _, _, lon in batch),
-            "daily": DAILY,
-            "forecast_days": config.FORECAST_DAYS,
-            "past_days": PAST_DAYS,
-            "wind_speed_unit": "ms",
-            "timezone": "UTC",
-        },
+        params=params,
         timeout=120,
         pacer=pacer,
-        label=f"open-meteo {batch[0][0]}..{batch[-1][0]} ({len(batch)})",
+        label=f"open-meteo {batch[0][0]}..{batch[-1][0]} ({len(batch)}, {model or 'best_match'})",
     )
     body = r.json()
     if isinstance(body, dict):  # a single location comes back as one object
@@ -91,12 +104,60 @@ def fetch(place_id: str, lat: float, lon: float, pacer: Pacer) -> pd.DataFrame:
     return fetch_batch([(place_id, lat, lon)], pacer)[0]
 
 
+def missing_forecast_rows(out: pd.DataFrame, today) -> pd.DataFrame:
+    """Forecast rows (date ≥ today) with no value at all, as ``place_id, date``."""
+    if out.empty:
+        return out[["place_id", "date"]]
+    fut = out[pd.to_datetime(out["date"]).dt.date >= today]
+    return fut.loc[fut[VALUES].isna().all(axis=1), ["place_id", "date"]]
+
+
+def fill_missing_days(
+    out: pd.DataFrame, triples: list[tuple[str, float, float]], today, pacer: Pacer
+) -> tuple[pd.DataFrame, dict]:
+    """Patch all-null forecast days from ``FALLBACK_MODEL``; other rows are untouched."""
+    missing = missing_forecast_rows(out, today)
+    if missing.empty or not FALLBACK_MODEL:
+        return out, {"places": 0, "rows": 0, "unfilled": 0}
+    want = set(missing["place_id"])
+    todo = [t for t in triples if t[0] in want]
+    size = max(1, BATCH)
+    fills: list[pd.DataFrame] = []
+    for i in range(0, len(todo), size):
+        batch = todo[i : i + size]
+        try:
+            fills.extend(fetch_batch(batch, pacer, FALLBACK_MODEL))
+        except Exception as e:
+            log.warning("%s fill for %d places failed: %s", FALLBACK_MODEL, len(batch), e)
+    if not fills:
+        return out, {"places": len(want), "rows": 0, "unfilled": len(missing)}
+    fb = pd.concat(fills, ignore_index=True).set_index(["place_id", "date"])
+    out = out.set_index(["place_id", "date"])
+    keys = pd.MultiIndex.from_frame(missing)
+    keys = keys[keys.isin(fb.index)]
+    patch = fb.loc[keys, VALUES]
+    patch = patch[patch.notna().any(axis=1)]
+    out.loc[patch.index, VALUES] = patch.to_numpy()
+    out = out.reset_index()[SCHEMA]
+    left = len(missing_forecast_rows(out, today))
+    log.info(
+        "forecast fill: %d places had all-null days (%d rows); %s filled %d, %d left",
+        len(want),
+        len(missing),
+        FALLBACK_MODEL,
+        len(patch),
+        left,
+    )
+    return out, {"places": len(want), "rows": len(patch), "unfilled": left}
+
+
 def run(places: pd.DataFrame, run_id: str) -> dict:
     FORECAST_DIR.mkdir(parents=True, exist_ok=True)
     pacer = Pacer(PACE_S)
     parts: list[pd.DataFrame] = []
     failures: list[str] = []
     started = datetime.now(UTC)
+    today = started.date()
     triples = [(p.id, float(p.lat), float(p.lon)) for p in places.itertuples(index=False)]
     size = max(1, BATCH)
     batches = [triples[i : i + size] for i in range(0, len(triples), size)]
@@ -127,6 +188,7 @@ def run(places: pd.DataFrame, run_id: str) -> dict:
                 len(failures),
             )
     out = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=SCHEMA)
+    out, filled = fill_missing_days(out, triples, today, pacer)
     out = out.sort_values(["place_id", "date"]).reset_index(drop=True)
     path = FORECAST_DIR / f"{run_id}.parquet"
     out.to_parquet(path, index=False)
@@ -144,5 +206,6 @@ def run(places: pd.DataFrame, run_id: str) -> dict:
         "path": str(path),
         "first": out["date"].min().isoformat() if not out.empty else None,
         "last": out["date"].max().isoformat() if not out.empty else None,
+        "filled": filled,
         "retrieved_at": datetime.now(UTC),
     }

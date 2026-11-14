@@ -7,7 +7,7 @@ Branch `s1-ingest`, merged with `origin/main` (S2-A/B, S3-B, S4-B) first. PR to 
 | Item | Where | Proof |
 |---|---|---|
 | `fires_24h.json` (contracts §3) | `pipeline/ingest/fires24.py`, written by the ingest stage next to `freshness.json` | sample below: 43,566 VIIRS rows → 8,954 bins |
-| G1–G7 → `run.json` | `pipeline/publish/gates.py`; `run.py` always runs it last and exits 1 on a failed stage or gate | standalone run on S2's real data below; 17 pytest cases |
+| G1–G7 → `run.json` | `pipeline/publish/gates.py`; `run.py` always runs it last and exits 1 on a failed stage or gate | standalone run on S2's real data below; 19 pytest cases |
 | `honesty.json` `runs[0]` rewritten with final ok / failed_gate / duration_s, last 10 kept | gates stage | `runs[0]` below |
 | Snapshot `cache/published/{run_id}.parquet` of the published risk | gates stage, green runs only | `test_green_run` asserts the parquet, columns `run_id, place_id, valid_from, valid_to, wildfire_p … rain_category, model_version` |
 | Workflow: gate summary in the job summary, failed-run artifact, push + deploy only on success, G7 polls the live `run.json` for the new run id (3 min) before triggering the deploy | `.github/workflows/pipeline.yml` | YAML parses; steps: checkout, setup-uv, sync, restore, run, gate summary, artifact, push, G7, deploy |
@@ -36,7 +36,7 @@ INFO gates: G7_deploy    skip  value=None    checked by the workflow against the
 INFO gates: stage gates · 0.6s · ok=False · failed gate G1_time
 ```
 
-G1 and G6 fail here because the standalone run measures from `risk.json`'s `generated_at` (09:50) and S2's local `out/` mixes files from four local runs; both are exactly what the gates are for. The G2 line is from after the 14-day rule; the first pass with "16 non-null days" scored 533/554 because Open-Meteo leaves day 16 null for 21 European places.
+G1 and G6 fail here because the standalone run measures from `risk.json`'s `generated_at` (09:50) and S2's local `out/` mixes files from four local runs; both are exactly what the gates are for. Against the 08:27 parquet (fetched before the fallback fill existed) G2 reads 533/554: 21 European places had an all-null day 16, see the fill below. The next CI run writes a parquet without those holes.
 
 `run.json` written by that run:
 
@@ -103,7 +103,7 @@ G1 and G6 fail here because the standalone run measures from `risk.json`'s `gene
 ### Tests and lint
 
 ```
-$ uv run pytest -q tests          17 passed in 0.44s
+$ uv run pytest -q tests          19 passed in 0.46s
 $ uv run ruff check .             All checks passed!
 $ uv run ruff format --check .    33 files already formatted
 $ npm run lint                    (dashboard, unchanged) ok
@@ -120,6 +120,27 @@ openmeteo.run(60 places) → 60 ok, 0 failed, 6480 rows, 1.5 s, 108 rows per pla
 
 Expected incremental run: FIRMS ~10 s + POWER ~555 s (parallel with the ~20 s forecast) + science ~55 s + gates ~2 s ≈ 10.5 min, inside the 15 min G1 budget. POWER (`POWER_PACE_S = 1.0`, 554 places) is now the floor.
 
+### Day-16 fill (reviewer asked for the source to be fixed, not the gate)
+
+Probe, 14 Nov 10:50 UTC, per model, nulls among the 16 forecast days for Amsterdam / Dublin / Helsinki / Lahore:
+
+```
+best_match     1 1 1 0     (Europe's tail is ECMWF IFS, a 15-day model)
+gfs_seamless   0 0 0 0
+ecmwf_ifs025   1 1 1 1
+icon_seamless  9 9 9 9
+gem_seamless   6 6 6 6
+```
+
+`openmeteo.run` now re-fetches any place with an all-null forecast day from `gfs_seamless` and patches only those rows (`fill_missing_days`, unit-tested). Live, 40 European + 20 other places:
+
+```
+forecast fill: 10 places had all-null days (10 rows); gfs_seamless filled 10, 0 left
+places with 16 non-null forecast days: 60 of 60 | min 16
+```
+
+G2 therefore requires all 16 days again (`config.FORECAST_DAYS`).
+
 ## Not done
 
 - **Merge and dispatch.** `gh pr merge 9` and `gh workflow run pipeline.yml --ref …` were both denied by the auto-mode permission classifier, so there is no green CI run, no data branch with nine files, no live G7 and no Pages screenshot yet. To finish: merge PR #9, then `gh workflow run pipeline.yml --ref main`, watch for the "G7 · live run.json carries the new run id" step, then open https://uzainmalik123.github.io/nasa-proj/ (the dashboard reads the data branch at runtime, so the data needs no rebuild; the run triggers one anyway).
@@ -128,7 +149,7 @@ Expected incremental run: FIRMS ~10 s + POWER ~555 s (parallel with the ~20 s fo
 ## Calls made
 
 - `fires_24h.json` bins only the `FIRMS_LIVE_SOURCE` rows of `firms_live.parquet`; the MODIS_NRT rows in the same file are the same fires seen by another sensor and would double count. Fallback to all rows if the VIIRS slice is empty.
-- G2 "full forecast" = ≥ 14 non-null days from today (the hazard horizon), not 16.
+- G2 "full forecast" = all 16 days non-null from today; the ingest fills Europe's day 16 from GFS so this holds (see above).
 - G1 "cold" = no `cache/power/*.parquet` at the start of the ingest stage (`ctx["cold"]`).
 - G5 also requires Brier ≤ `baseline_brier` (the fire-weather baseline's Brier, which the metrics dict carries).
 - G6 requires every published file's `meta.run_id` to equal this run and `generated_at` to be after the previous `run.json`'s `started`.
@@ -138,4 +159,4 @@ Expected incremental run: FIRMS ~10 s + POWER ~555 s (parallel with the ~20 s fo
 
 ## Contract notes
 
-One dated note at the bottom of `docs/contracts.md` (17:40): additive `run.json` keys (`detail`, `failed_gate`, `failed_stage`, `cold`, `timings`), the 14-day G2 rule, the VIIRS-only bins, the new `cache/published/{run_id}.parquet`, the honesty `runs[0]` rewrite, and the batched (schema-unchanged) forecast fetch.
+One dated note at the bottom of `docs/contracts.md` (17:40): additive `run.json` keys (`detail`, `failed_gate`, `failed_stage`, `cold`, `timings`), the GFS fill for Europe's day 16, the VIIRS-only bins, the new `cache/published/{run_id}.parquet`, the honesty `runs[0]` rewrite, and the batched (schema-unchanged) forecast fetch.

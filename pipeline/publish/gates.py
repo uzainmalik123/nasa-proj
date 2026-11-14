@@ -4,8 +4,8 @@ Runs last, even after an earlier stage raised, so every run leaves a
 ``run.json`` (contracts §3) that says what passed:
 
   G1 time       incremental < 15 min, cold run (no POWER cache at start) < 60 min
-  G2 coverage   ≥ 98 % of places with POWER through 4 days ago, a forecast
-                covering the 14-day horizon and a FIRMS count
+  G2 coverage   ≥ 98 % of places with POWER through 4 days ago, a full 16-day
+                forecast and a FIRMS count
   G3 freshness  FIRMS ≤ 6 h, POWER ≤ 4 days, forecast ≤ 12 h (freshness.json)
   G4 sanity     FIRMS live rows > 1,000, risks in [0, 1], no NaN, wildfire p std
                 across places > 0.01, trend p in [0, 1]
@@ -121,8 +121,7 @@ def g2_coverage(places: pd.DataFrame | None, data_dir: Path, today: date, run_id
             continue
         if len(d) and pd.Timestamp(d.max()).date() >= power_cut:
             power_ok.add(pid)
-    # a full forecast: a value on every day of the hazard horizon (Open-Meteo leaves
-    # day 16 null for some European grid points), from this run's file
+    # a full forecast: a value on all FORECAST_DAYS days from today, from this run's file
     fc_ok: set[str] = set()
     fdir = cache / "forecast"
     fpath = fdir / f"{run_id}.parquet"
@@ -133,7 +132,7 @@ def g2_coverage(places: pd.DataFrame | None, data_dir: Path, today: date, run_id
         fc = pd.read_parquet(fpath, columns=["place_id", "date", "tmax"])
         fc = fc[(pd.to_datetime(fc["date"]).dt.date >= today) & fc["tmax"].notna()]
         cnt = fc.groupby("place_id").size()
-        fc_ok = set(cnt[cnt >= config.HORIZON_DAYS].index)
+        fc_ok = set(cnt[cnt >= config.FORECAST_DAYS].index)
     # a FIRMS count on the newest counted date
     firms_ok: set[str] = set()
     cpath = cache / "firms_counts.parquet"
