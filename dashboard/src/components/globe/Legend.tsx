@@ -4,6 +4,7 @@ import {
   CATEGORIES, CATEGORY_THRESHOLD_P, CATEGORY_V, HAZARD_LABEL, VARIABLE_LABEL, riskColour, signed, slopeDigits,
   type Colouring,
 } from "./colour";
+import { GIBS_LAYERS, GIBS_MAX_STEP_BACK, type GibsValid } from "./gibs";
 
 const BAR_W = 176;
 
@@ -25,13 +26,14 @@ function pctLabel(v: number): string {
 
 const trendGradient = `linear-gradient(to right, ${P.s1} 0%, ${P.muted} 50%, ${P.s2} 100%)`;
 
-export default function Legend({ colouring }: { colouring: Colouring }) {
+export default function Legend({ colouring, gibs = null }: { colouring: Colouring; gibs?: GibsValid | null }) {
   return (
     <div
       className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-[10px] text-muted backdrop-blur"
       style={{ minWidth: BAR_W + 24, maxWidth: BAR_W + 64 }}
     >
       {colouring.kind === "risk" ? <RiskLegend c={colouring} /> : <TrendLegend c={colouring} />}
+      {gibs && <GibsRow g={gibs} />}
       <div className="mt-2 flex items-center gap-2 border-t border-white/10 pt-2">
         <span
           className="inline-block h-2.5 w-2.5 rounded-full"
@@ -41,6 +43,34 @@ export default function Legend({ colouring }: { colouring: Colouring }) {
           }}
         />
         <span>active fire detection (FIRMS)</span>
+      </div>
+    </div>
+  );
+}
+
+/** PRD M1: swatch from the layer's own GIBS colormap, valid date, kind + source. */
+function GibsRow({ g }: { g: GibsValid }) {
+  const m = GIBS_LAYERS[g.key];
+  return (
+    <div className="mt-2 border-t border-white/10 pt-2">
+      <div className="flex items-center gap-1.5 text-ink-2">
+        <span className="inline-block h-2 w-2 rounded-full" style={{ background: m.colour }} />
+        {m.label}
+      </div>
+      {m.swatch && (
+        <>
+          <div
+            className="mt-1 h-2 rounded-sm"
+            style={{ width: BAR_W, backgroundImage: `linear-gradient(to right, ${m.swatch.colours.join(", ")})` }}
+          />
+          <div className="mt-0.5 flex justify-between font-mono" style={{ width: BAR_W }}>
+            <span>{m.swatch.lo}</span>
+            <span>{m.swatch.hi}</span>
+          </div>
+        </>
+      )}
+      <div className="mt-0.5 text-muted">
+        {g.valid ? `valid ${g.valid} · observation · NASA GIBS` : `no image within ${GIBS_MAX_STEP_BACK} days · NASA GIBS`}
       </div>
     </div>
   );
