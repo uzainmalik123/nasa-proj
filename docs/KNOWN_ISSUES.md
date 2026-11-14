@@ -45,7 +45,7 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 - **Checked (20:30 PKT):** raw.githubusercontent.com does gzip; on the wire the nine files are ~1.8 MB (trends 945 KB, series 522 KB, risk 255 KB, fires 41 KB, places 16 KB, rest tiny), ~8 s fetched one after another from here, so a slow link easily turns that into 30–60 s. `loadAll()` fetches `run.json` first and only then the other eight (one extra round trip), then renders nothing until all nine have parsed: 7.5 MB of JSON, 2.7 MB of it `trends.series_long` (120 months × 6 variables × 554 places), which no panel needs until a place is selected.
 - **Cause:** everything-first loading. First paint needs ~450 KB gzipped (places, risk `now`, trend slopes/labels, fires); the other ~1.4 MB is per-place detail.
 - **Fix sketch, staged:**
-  1. **Today, S4, small:** fetch all nine in parallel (drop the run.json-first step; use a timestamp cache-buster), render the globe and KPIs as soon as `places` + `risk` arrive, tables as `trends` arrives, skeletons meanwhile; show a progress line ("3 of 9 files") instead of "connecting".
+  1. **Today, S4, small:** ~~fetch all nine in parallel (drop the run.json-first step; use a timestamp cache-buster)~~ and ~~show a progress line ("3 of 9 files") instead of "connecting"~~ · **done by INTEGRATE d1 (`a9e8742`)**: parallel fetch, 5-minute cache-buster window, "loading N of 9 files" pill; local real-data load 24.6 s → 9.8 s, live 11.6 s in headless Chromium. Still open: render the globe and KPIs as soon as `places` + `risk` arrive, tables as `trends` arrives, skeletons meanwhile.
   2. **Day 2, S2 + S4, medium:** split the published files into a *summary* set for first paint and *detail* files loaded on demand: `risk.json` keeps `now`, `model`, `valid_*`; `trends.json` keeps `long`/`short` slopes, p, labels; `series_long`, the 90-day series, the hazard `history`, `drivers` and `text` move to `out/place/{place_id}.json` (~10–15 KB gzipped each, 554 files on the data branch) fetched when a place is selected or hovered. First paint drops to ~400 KB.
   3. **Then, S3, small:** prefetch the detail files of the places in view (nearest N to the globe centre, re-run on `moveend`), which is the "load where the user is, then more" behaviour; the feed and the top-20 table prefetch their own rows.
   4. **Optional:** copy `out/` into the Pages build at deploy time so the files come from the Pages CDN with `Cache-Control` tuned to the 3 h cadence, instead of raw.githubusercontent's 5 min `max-age=300`.
@@ -90,7 +90,13 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 - **Checked:** `Globe.tsx` creates the map with `dragRotate: false` and adds no `NavigationControl`; MapLibre's built-in keyboard handler (`+`/`-`, arrows) only works once the canvas has focus, and nothing makes it focusable or says so.
 - **Fix sketch (S3, small):** `map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right")` gives + / − buttons that are real `<button>`s (tab-reachable, with aria-labels); set `tabindex="0"` and an `aria-label` on the canvas container so `+`/`-`/arrows work after a Tab; style the control with the DESIGN.md tokens (the default MapLibre CSS is white). A "reset view" button (home) in the same group is cheap and useful.
 
+### KI-16 · Scheduled pipeline runs are late or missing
+- **Seen:** `cron: "0 */3 * * *"`; only one scheduled run so far (13:14Z for the 12:00Z slot, red on G2 before the day-16 fill landed). The 15:00Z slot had not fired by 17:45Z.
+- **Checked:** both workflows are `active`; the dispatch path is green (14:23Z). GitHub delays or drops scheduled runs on busy days and for new repositories; nothing in the YAML is wrong.
+- **Fix sketch (S1, none unless it persists):** if no scheduled run goes green overnight, dispatch manually before the pitch and add a second cron line offset by 30 min (`30 */3 * * *`) so a dropped slot is covered.
+
 ## Fixed
+- 14 Nov · INTEGRATE d1: KI-7 step 1a (parallel fetch + progress pill), see above.
 - 14 Nov · Open-Meteo day 16 null over Europe (21 places): filled from `gfs_seamless` in the ingest; G2 requires 16 days.
 - 14 Nov · Open-Meteo per-IP quota ban: incremental `past_days=2`, cache reuse, fail-fast with cache fallback.
 - 14 Nov · Reused forecast cache not filled: reuse path runs the fill too.
