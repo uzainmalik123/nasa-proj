@@ -92,6 +92,7 @@ def main(limit: int | None) -> None:
     firms_dates = pd.date_range(firms_start, today, freq="D")
     counts = []
     past_days = 92  # Open-Meteo ``past_days``: forecast cache overlaps POWER
+    null_head = 26  # measured 2026-11-14: the API populates only ~66 of the 92 past days
     fc_dates = pd.date_range(
         today - timedelta(days=past_days), periods=past_days + config.FORECAST_DAYS, freq="D"
     )
@@ -121,25 +122,25 @@ def main(limit: int | None) -> None:
         nf = len(fc_dates)
         rh_bias = RNG.choice([0.0, 0.0, 15.0, -15.0, 30.0])
         rh_true = truth["rh_pct"].to_numpy()
-        fc.append(
-            pd.DataFrame(
-                {
-                    "place_id": p["id"],
-                    "date": [d.date().isoformat() for d in fc_dates],
-                    "tmax": (truth["t2m_max"].to_numpy() + RNG.normal(0, 1, nf)).round(1),
-                    "rain_mm": np.clip(
-                        truth["rain_mm"].to_numpy() + RNG.normal(0, 1, nf), 0, None
-                    ).round(1),
-                    "rh_min": np.clip(rh_true + rh_bias - 15, 3, 100).round(0),
-                    "rh_mean": np.clip(rh_true + rh_bias + RNG.normal(0, 3, nf), 3, 100).round(0),
-                    "wind_max": (truth["wind_ms"].to_numpy() * 1.8).round(2),
-                    "wind_mean": (truth["wind_ms"].to_numpy() / 0.75 + RNG.normal(0, 0.2, nf))
-                    .clip(0)
-                    .round(2),
-                    "et0": RNG.uniform(1, 6, nf).round(2),
-                }
-            )
+        fc_rows = pd.DataFrame(
+            {
+                "place_id": p["id"],
+                "date": [d.date().isoformat() for d in fc_dates],
+                "tmax": (truth["t2m_max"].to_numpy() + RNG.normal(0, 1, nf)).round(1),
+                "rain_mm": np.clip(
+                    truth["rain_mm"].to_numpy() + RNG.normal(0, 1, nf), 0, None
+                ).round(1),
+                "rh_min": np.clip(rh_true + rh_bias - 15, 3, 100).round(0),
+                "rh_mean": np.clip(rh_true + rh_bias + RNG.normal(0, 3, nf), 3, 100).round(0),
+                "wind_max": (truth["wind_ms"].to_numpy() * 1.8).round(2),
+                "wind_mean": (truth["wind_ms"].to_numpy() / 0.75 + RNG.normal(0, 0.2, nf))
+                .clip(0)
+                .round(2),
+                "et0": RNG.uniform(1, 6, nf).round(2),
+            }
         )
+        fc_rows.iloc[:null_head, 2:] = np.nan  # all-null head rows, as the API returns them
+        fc.append(fc_rows)
     pd.concat(counts, ignore_index=True).to_parquet(
         SYNTH_DIR / "cache" / "firms_counts.parquet", index=False
     )
