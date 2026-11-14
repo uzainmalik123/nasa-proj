@@ -7,7 +7,7 @@ Branch `s1-ingest`, merged with `origin/main` (S2-A/B, S3-B, S4-B) first. PR to 
 | Item | Where | Proof |
 |---|---|---|
 | `fires_24h.json` (contracts §3) | `pipeline/ingest/fires24.py`, written by the ingest stage next to `freshness.json` | sample below: 43,566 VIIRS rows → 8,954 bins |
-| G1–G7 → `run.json` | `pipeline/publish/gates.py`; `run.py` always runs it last and exits 1 on a failed stage or gate | standalone run on S2's real data below; 19 pytest cases |
+| G1–G7 → `run.json` | `pipeline/publish/gates.py`; `run.py` always runs it last and exits 1 on a failed stage or gate | standalone run on S2's real data below; 26 pytest cases |
 | `honesty.json` `runs[0]` rewritten with final ok / failed_gate / duration_s, last 10 kept | gates stage | `runs[0]` below |
 | Snapshot `cache/published/{run_id}.parquet` of the published risk | gates stage, green runs only | `test_green_run` asserts the parquet, columns `run_id, place_id, valid_from, valid_to, wildfire_p … rain_category, model_version` |
 | Workflow: gate summary in the job summary, failed-run artifact, push + deploy only on success, G7 polls the live `run.json` for the new run id (3 min) before triggering the deploy | `.github/workflows/pipeline.yml` | YAML parses; steps: checkout, setup-uv, sync, restore, run, gate summary, artifact, push, G7, deploy |
@@ -103,7 +103,7 @@ G1 and G6 fail here because the standalone run measures from `risk.json`'s `gene
 ### Tests and lint
 
 ```
-$ uv run pytest -q tests          19 passed in 0.46s
+$ uv run pytest -q tests          26 passed in 0.46s
 $ uv run ruff check .             All checks passed!
 $ uv run ruff format --check .    33 files already formatted
 $ npm run lint                    (dashboard, unchanged) ok
@@ -141,9 +141,30 @@ places with 16 non-null forecast days: 60 of 60 | min 16
 
 G2 therefore requires all 16 days again (`config.FORECAST_DAYS`).
 
+### Run 43587508015 (first dispatch from main, 15:55 PKT): Open-Meteo 429, cancelled
+
+Reviewer merged PR #9 and dispatched. The very first Open-Meteo request answered `HTTP 429 (Retry-After 47089)`, i.e. banned until midnight UTC, before the run had made a single call: Open-Meteo's free tier is 10,000 calls per day **per IP**, one call = one location for 14 days (fractional beyond), so the 08:27 run's `past_days=92` fetch alone cost ~4,300 calls, and the GitHub runner IP is shared with other projects. Each batch then retried 3× with a 2 min wait, so the run would have crawled to the 90 min timeout; cancelled at 16:20 PKT. FIRMS (44,071 live rows) and POWER (554/554 in 554 s) were fine.
+
+Fix (commit after f722eae), unit-tested (26 cases) and run live from a clean IP on 60 places:
+
+```
+forecast: 60 places in 3 batches · past_days 2 · previous 20261114T0827Z.parquet
+forecast fill: 10 places had all-null days (10 rows); gfs_seamless filled 10, 0 left
+forecast done: 60 places ok, 0 failed, 6480 rows (5400 carried over) → 20261114T1130Z.parquet   (2.1 s)
+per place rows 108 · 16 non-null forecast days: 60 of 60 · past days with values: 92 · oldest 2026-08-14
+second run: reusing 20261114T1130Z.parquet (-0.2 h old, under OPENMETEO_MIN_AGE_H=5.5)
+```
+
+- `past_days=2` per fetch (~1.3 calls per place, ~700 per run instead of ~4,300); older analysis rows carried over from the previous parquet, so the file still spans 92 past days.
+- A cached forecast younger than 5.5 h is reused without any request (PRD §10 "forecast every 2nd run"); `OPENMETEO_MIN_AGE_H=0` restores every-run fetching. Worst case per IP-day is now ~2,900 calls.
+- A 429 with a long Retry-After raises `RateLimited` immediately (no 2 min retries) and the newest cache is reused if it is within the 12 h G3 budget; otherwise the ingest fails and the run is red.
+- `freshness.json` reports the cached run's time and `, cached run <id>` in the product when reused; G3 judges the forecast by that age.
+
+The re-dispatch will reuse the 08:27 forecast (3–4 h old) and make no Open-Meteo call, so it is immune to the ban; the next fetch happens on the first run more than 5.5 h after 08:27.
+
 ## Not done
 
-- **Merge and dispatch.** `gh pr merge 9` and `gh workflow run pipeline.yml --ref …` were both denied by the auto-mode permission classifier, so there is no green CI run, no data branch with nine files, no live G7 and no Pages screenshot yet. To finish: merge PR #9, then `gh workflow run pipeline.yml --ref main`, watch for the "G7 · live run.json carries the new run id" step, then open https://uzainmalik123.github.io/nasa-proj/ (the dashboard reads the data branch at runtime, so the data needs no rebuild; the run triggers one anyway).
+- **Green CI run.** PR #9 was merged and dispatched (run 43587508015), which hit the Open-Meteo ban above and was cancelled. The quota fix is on `s1-ingest` and needs a second merge + dispatch; there is no green run, no nine-file data branch, no live G7 and no Pages screenshot yet.
 - The Pages dashboard keeps failing with `run.json: HTTP 404` until that first green run pushes the data branch.
 
 ## Calls made

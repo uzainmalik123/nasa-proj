@@ -119,12 +119,15 @@ def build_freshness(ctx: dict, places: pd.DataFrame, res: dict, now: datetime) -
         {
             "name": "Open-Meteo",
             "kind": "forecast",
-            "product": "16-day daily forecast (non-NASA supplement)",
+            "product": "16-day daily forecast (non-NASA supplement)"
+            + (f", cached run {om['reused']}" if om.get("reused") else ""),
             "valid_for": _iso(om["retrieved_at"]),
             "retrieved_at": _iso(om["retrieved_at"]),
             "records": om["rows"],
             "latency_doc": "model runs hourly",
-            "status": "ok" if om["ok"] else "missing",
+            "status": "missing"
+            if not om["ok"]
+            else _status(om["retrieved_at"], timedelta(hours=config.G3_FORECAST_MAX_AGE_H), now),
             "url": "https://open-meteo.com/",
         },
         {
