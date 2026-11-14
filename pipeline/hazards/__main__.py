@@ -1,7 +1,7 @@
 """Standalone science tail: hazards + publish from an existing feature table.
 
-    uv run python -m hazards            # data/features.parquet, data/out/trends.json
-    uv run python -m hazards --synth    # data/synth/
+uv run python -m hazards            # data/features.parquet, data/out/trends.json
+uv run python -m hazards --synth    # data/synth/
 """
 
 from __future__ import annotations
