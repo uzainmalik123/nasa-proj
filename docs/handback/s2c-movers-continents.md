@@ -24,18 +24,18 @@ Heat up: Ibadan 7 → 12 days (+5, extreme), Maceió 3 → 8, Dakar 6 → 10. Ra
 
 ```json
 {"movers": {"wildfire": {"key": "p", "since": "2026-11-07",
-  "up":   [{"place": 231, "id": "yangon-mm", "value": 0.752, "ago": 0.174, "delta": 0.578, "category": "high", "exposure": 5209541}, …×10],
-  "down": [{"place": 402, "id": "sacramento-us", "value": 0.174, "ago": 0.584, "delta": -0.41, "category": "low", "exposure": 1472000}, …×10]},
+  "up":   [{"place": 116, "id": "yangon-mm", "value": 0.752, "ago": 0.174, "delta": 0.578, "category": "high", "exposure": 4088000}, …×10],
+  "down": [{"place": 448, "id": "sacramento-us", "value": 0.174, "ago": 0.584, "delta": -0.41, "category": "low", "exposure": 1604000}, …×10]},
   "drought": {"key": "index", …}, "heat": {"key": "days_above", …}, "rain": {"key": "p", …}},
  "continents": {
   "names": ["Africa", "Asia", "Europe", "North America", "Oceania", "South America"],
   "n": [80, 252, 78, 80, 19, 45],
-  "pop": [138012345, 702000000, 140000000, 204000000, 16000000, 142000000],
+  "pop": [138078824, 702025102, 140031430, 204335718, 16189958, 142456761],
   "counts": {"wildfire": [{"low": 52, "elevated": 7, "high": 11, "extreme": 10}, {"low": 151, "elevated": 42, "high": 46, "extreme": 13}, …×6], "drought": […], "heat": […], "rain": […]},
   "mean_now": {"wildfire": [0.329, 0.353, 0.087, 0.214, 0.181, 0.446], "drought": [-0.347, 0.079, -0.315, -0.273, -0.279, 0.754], "heat": [0.988, 0.004, 0.0, 0.013, 0.0, 0.956], "rain": [0.098, 0.058, 0.212, 0.057, 0.089, 0.217]},
   "mean_history": {"wildfire": [[90 values] ×6], "drought": […], "heat": […], "rain": […]}}}
 ```
-(`place` indices and `pop` sums above are illustrative except where quoted in the table; the live file is the source.)
+All values verbatim from `pipeline/data/out/risk.json` of that run.
 
 ## Calls made
 - Δ is in the hazard's native unit against `history[-7]` (the same "Δ 7d" the hazards table already shows), not a category change; `up` is oriented to "more risk" for every hazard, which for drought means a negative Δ.
