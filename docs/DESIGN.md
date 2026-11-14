@@ -41,6 +41,8 @@ Series colours are bound to a meaning, not to a slot. Rain is always blue, fire 
 
 ### Risk ramp (sequential, transparent at zero)
 ```ts
+// stop values set 2026-11-14 from the first scoring run (20261114T0949Z, 554 places):
+// the 50 / 80 / 95 / 99th percentiles of wildfire p. Colours are not tunable.
 export const RISK_STOPS: [number, string][] = [
   [0.00,  "rgba(255,120,40,0)"],
   [0.15,  "rgba(140,45,15,0.45)"],   // 50th pct of wildfire p, run 20261114T0949Z
@@ -53,7 +55,16 @@ export const RISK_STOPS: [number, string][] = [
 Stop values set 14 Nov 2026 after the first real scoring run (554 places), per the rule below. The spike's values were 0.05 / 0.20 / 0.40 / 0.65.
 Used for the globe points, the risk sparkline fill, and the table bars. Always shown with a legend. Risk below the first stop is nearly invisible on purpose: the globe should look calm except where it matters.
 
-**The stop values are tunable, the colours are not (call).** The number shown is a calibrated probability, and the global base rate is unknown until real data is in. On day 1, after the first scoring run, set the stops at the 50th, 80th, 95th and 99th percentiles of current place risk and write the resulting probability values into the legend. If that makes the legend read "0 · 4 · 11 · 30 · 100 %", that is fine. The ramp encodes "unusual for the world right now"; the number next to it stays the honest probability.
+**The stop values are tunable, the colours are not (call).** The number shown is a calibrated probability, and the global base rate is unknown until real data is in. On day 1, after the first scoring run, set the stops at the 50th, 80th, 95th and 99th percentiles of current place risk and write the resulting probability values into the legend. The ramp encodes "unusual for the world right now"; the number next to it stays the honest probability.
+
+*Done 2026-11-14 15:10 (S4 follow-up):* the stops above are the measured percentiles 0.153 / 0.594 / 0.924 / 0.995, so the legend reads **0 · 15 · 59 · 92 · 99.5 · 100 %**. The wildfire base rate is 0.29, so a probability that would look alarming elsewhere is median here.
+
+### Category colour
+Categories (`low / elevated / high / extreme`) take their colour from the same ramp at the probability where the category **starts**, `config.CATEGORY_THRESHOLDS["wildfire"]` = 0.30 / 0.60 / 0.90 (S2-B, 2026-11-14 10:05), with `low` drawn in `muted`:
+```ts
+export const CATEGORY_V = { low: 0.03, elevated: 0.30, high: 0.60, extreme: 0.90 };
+```
+One copy in `globe/colour.ts`, one in `charts/ramp.ts`, kept identical, so a category chip and a globe point for the same place are the same colour. Chips show the colour as a dot and keep the label in `ink-2`, because the ramp is too dark at 0.30 and 0.60 to carry text. Legends quote the thresholds as "elevated / high / extreme at 30 / 60 / 90 %".
 
 ### CSS variables
 ```css
@@ -186,7 +197,7 @@ The spike also had RegionalSeries, LagBars, Backtest, Calibration and a seasonal
 
 ## 9. Do and don't
 
-- Do keep the globe calm. Risk below 5% is transparent.
+- Do keep the globe calm. Risk below the first ramp stop (15 %) is transparent.
 - Do bind colour to meaning across the whole app.
 - Do write the question in the card heading.
 - Don't add a second accent colour. Green is reserved for "good" and status.

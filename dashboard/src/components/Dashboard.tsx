@@ -11,6 +11,7 @@ import { P } from "@/lib/palette";
 import { HAZARDS, VARIABLES, type Data, type Hazard, type Mode, type Variable } from "@/lib/types";
 import type { FlyTarget, GibsLayerKey } from "./globe/Globe";
 import { GIBS_LAYERS } from "./globe/Globe";
+import Feed from "./panels/Feed";
 import Search from "./globe/Search";
 import Freshness, { useNow } from "./panels/Freshness";
 import HazardsTable from "./panels/HazardsTable";
@@ -79,6 +80,17 @@ export default function Dashboard() {
       ...prev,
       selected: i,
       flyTo: fly && i != null && places[i] ? { lon: places[i].lon, lat: places[i].lat } : prev.flyTo,
+    }));
+  }, [places]);
+
+  /** An alert picks its place and its hazard, and flies the globe (DESIGN §4). */
+  const pickAlert = useCallback((i: number, hazard: Hazard) => {
+    setS((prev) => ({
+      ...prev,
+      hazard,
+      mode: "next14",
+      selected: i,
+      flyTo: places[i] ? { lon: places[i].lon, lat: places[i].lat } : prev.flyTo,
     }));
   }, [places]);
 
@@ -196,7 +208,16 @@ export default function Dashboard() {
       <aside className="sidebar-scroll flex w-[560px] shrink-0 flex-col gap-3 border-l border-border p-3">
         <Kpis data={data} filter={filter} />
         {s.mode === "now" ? (<>{trendsTable}{hazardsTable}</>) : (<>{hazardsTable}{trendsTable}</>)}
-        <PlacePanel data={data} selected={s.selected} trendVar={s.trendVar} onClear={() => select(null)} />
+        <PlacePanel
+          data={data}
+          selected={s.selected}
+          trendVar={s.trendVar}
+          hazard={s.hazard}
+          onTrendVar={(trendVar) => setS((p) => ({ ...p, trendVar }))}
+          onHazard={(hazard) => setS((p) => ({ ...p, hazard }))}
+          onClear={() => select(null)}
+        />
+        <Feed feed={data?.feed ?? null} places={places} selected={s.selected} hazard={s.hazard} filter={filter} onPick={pickAlert} />
         <Freshness freshness={data?.freshness ?? null} run={data?.run ?? null} />
         <Sources freshness={data?.freshness ?? null} trends={data?.trends ?? null} risk={data?.risk ?? null} />
         <footer className="px-1 pb-1 text-[10px] leading-snug text-muted">
