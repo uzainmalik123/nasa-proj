@@ -1,0 +1,407 @@
+SESSIONS.txt  ·  copy-paste prompts for Claude Code sessions
+Earth System Trend Detective · NASA Space Apps 14–15 Nov 2026
+=====================================================================
+
+HOW TO USE
+----------
+1. Open a Claude Code session in the NEW repo directory.
+2. Paste ONE prompt block from below (everything between the ---- lines).
+3. Each prompt is self-contained: it tells the session what to read, what it
+   owns, what "done" means, and how to hand back.
+4. The PARALLEL MAP says what may run at the same time. Never run two prompts
+   that own the same directory at once.
+5. You review by outcome only: the proof the session hands back (screenshot
+   path, JSON sample, gate output). Do not read diffs.
+
+Paths: draft folder with the docs is  ~/Projects/hackathons/NASA/draft
+       new repo is wherever you create it (call it  ~/Projects/hackathons/NASA/etd )
+
+=====================================================================
+PARALLEL MAP
+=====================================================================
+
+DAY 1
+  09:00  [S0 BOOTSTRAP]            ONE session. Nothing else until it hands back.
+  10:00  [S1-A ingest+cold run]  ┐
+         [S2-A trend+features]   ├─ FOUR sessions in parallel, different dirs.
+         [S3-A globe]            │
+         [S4-A panels]           ┘
+  ~14:00 [S2-B model+hazards]    ┐  S2-B needs S1-A's parquet. S3-B/S4-B need
+         [S3-B search+fires]     ├─ only mocks + S2-A's trends.json.
+         [S4-B place panel+feed] ┘
+  ~17:00 [S1-B cron+gates+deploy]   ONE session. Needs S2-B's JSON writers.
+  ~18:30 [INTEGRATE day 1]          ONE session. Merges all branches, builds, fixes seams.
+
+DAY 2
+  09:00  [M-GIBS] [M-HONESTY] [M-MOVERS+CONTINENTS]   three in parallel
+  ~11:30 [M-MODE+URL] [M-PAKISTAN]                     two in parallel
+  12:00  tier-2 decision (PRD §13.3)
+  15:00  FREEZE pipeline. [POLISH] + [README] in parallel, then [PITCH].
+
+Rule of thumb: anything that writes to pipeline/ingest or .github is ONE
+session at a time. Anything under dashboard/src/components can run two at a
+time if they are in different subfolders (globe/ vs panels/).
+
+=====================================================================
+STANDARD PREAMBLE  (already included in every prompt below)
+=====================================================================
+You are one of several Claude Code sessions building this repo in parallel.
+Before writing anything, read docs/PRD.md, docs/DESIGN.md and
+docs/contracts.md. contracts.md is frozen: if you must change a schema, add a
+dated note at its bottom and say so in your handback. Work only inside the
+directories listed under OWNS. Create and work on the branch named below.
+Before handing back: `uv run ruff check pipeline` and/or `npm run lint && npm
+run build` must pass. Your final message must contain: what works, PROOF (a
+screenshot path, a JSON sample, or command output), what is NOT done, and any
+contract notes. Do not describe something as done without proof. Do not wait
+for me mid-task; make reasonable calls and list them.
+
+=====================================================================
+DAY 1 · 09:00 · S0 BOOTSTRAP   (one session, ~60 min, blocks everything)
+=====================================================================
+----
+Bootstrap the hackathon repo for "Earth System Trend Detective".
+
+1. Create a git repo in the current directory, default branch main, and a
+   .gitignore for Python (uv .venv, data/), Node (node_modules, .next,
+   next-env.d.ts), .env*, and dashboard/public/data/*.json except mock files.
+2. Copy ~/Projects/hackathons/NASA/draft/docs/{PRD.md,DESIGN.md,contracts.md,prep.md}
+   into docs/. Read all four. contracts.md defines the repo layout; create it exactly.
+3. pipeline/: `uv init --python 3.12`, then `uv add numpy pandas pyarrow
+   scikit-learn scipy shap xgboost-cpu requests pymannkendall python-dotenv
+   ruff`. Use xgboost-cpu, never xgboost. Create config.py with every
+   constant named in contracts.md §4, PLACE_TIER=1, and FIRMS_LIVE_SOURCE
+   set to the value in pipeline/.env if present else "VIIRS_NOAA21_NRT".
+   Create run.py that imports the stage modules in order (ingest → places →
+   trend → features → hazards → publish → gates) with each stage a stub that
+   logs its name, so the skeleton runs end to end in under 5 s.
+4. dashboard/: `npx create-next-app@latest dashboard --ts --tailwind --app
+   --src-dir --eslint --no-import-alias` then `npm i maplibre-gl d3-scale
+   d3-shape d3-interpolate` and their @types. Add the copy-worker script and
+   postinstall/predev/prebuild hooks described in prep.md §9 (MapLibre
+   worker served from public/). Put the tokens from DESIGN.md §2 into
+   src/app/globals.css and src/lib/palette.ts verbatim. Create src/lib/types.ts
+   mirroring contracts.md §3 exactly, and src/lib/data.ts with loadAll().
+5. pipeline/places/build_places.py: download Natural Earth
+   ne_10m_populated_places (zip, public domain), select national capitals
+   plus pop_max ≥ 1,000,000, dedupe within 50 km keeping the larger, assign
+   place_id per contracts §2 and continent from the ADM0 country via a small
+   lookup. Write data/places.parquet and dashboard/public/data/places.json.
+   Print the count; it should be roughly 500–700.
+6. Mock data: write pipeline/publish/mock.py that generates every file in
+   contracts §3 for the FIRST 20 places with plausible random values, into
+   dashboard/public/data/. Run it.
+7. .github/workflows/pipeline.yml: cron "0 */3 * * *" + workflow_dispatch;
+   checkout; uv sync; run pipeline/run.py with secrets FIRMS_MAP_KEY,
+   EARTHDATA_USERNAME, EARTHDATA_PASSWORD as env; push data/out/*.json and
+   data/cache/*.parquet to an orphan branch `data` (force); then dispatch
+   deploy.yml. deploy.yml: build dashboard with NEXT_PUBLIC_DATA_URL pointing
+   at raw.githubusercontent on the data branch, static export, publish to
+   GitHub Pages. Both workflows must pass `actionlint` style sanity (valid YAML,
+   no undefined secrets).
+8. Read pipeline/.env (I will have placed it) and run the FIRMS source test:
+   fetch world/1 for VIIRS_NOAA21_NRT, VIIRS_NOAA20_NRT, VIIRS_SNPP_NRT,
+   MODIS_NRT, print row counts, and set FIRMS_LIVE_SOURCE in config.py to the
+   VIIRS source with the most rows. Print the choice.
+9. Commit everything on main. Create branches s1-ingest, s2-science,
+   s3-globe, s4-panels from main.
+10. Handback: the place count, the FIRMS source chosen, `npm run build`
+    output tail, `uv run python pipeline/run.py` output, and a screenshot of
+    the Next.js default page at localhost:3000 proving the dev server works.
+----
+
+=====================================================================
+DAY 1 · 10:00 · FOUR IN PARALLEL
+=====================================================================
+
+----  S1-A  INGEST + COLD RUN   (branch s1-ingest; owns pipeline/ingest, .github)
+[standard preamble applies]
+Implement PRD §7.2 steps 1–3 as pipeline/ingest/{firms,power,openmeteo}.py
+writing the parquet caches defined in contracts.md §4.
+- power.py: per place, fetch from the last cached date to today (first run:
+  2016-01-01), parameters T2M,T2M_MAX,PRECTOTCORR,RH2M,WS2M,GWETROOT,GWETTOP,
+  community=AG. Pace at POWER_PACE_S between requests, retry 3× with backoff
+  on 429/5xx. Replace -999 with null. One parquet per place.
+- firms.py: (a) live: world/1 for FIRMS_LIVE_SOURCE and for MODIS_NRT;
+  (b) history: MODIS_SP in 5-day chunks (world is capped at 5 days) back 12
+  months, skipping chunks already cached; filter type==0 (vegetation fire)
+  for counts; KD-tree join (scipy cKDTree on unit vectors) to places within
+  RADIUS_KM; write firms/{date}.parquet and firms_counts.parquet.
+- openmeteo.py: 16-day daily forecast per place, variables in PRD §6, one
+  request per place, write forecast/{run_id}.parquet.
+- Wire all three into run.py's ingest stage and write freshness.json per
+  contracts §3 (valid_for = newest data timestamp, retrieved_at = now).
+Then push the branch and trigger the workflow with workflow_dispatch so the
+COLD RUN starts in GitHub Actions. Watch it. The cold run must start before
+11:00. If POWER throttles, lower the place count via PLACE_TIER logic and say so.
+Handback: Actions run URL, its duration, row counts per cache, freshness.json.
+----
+
+----  S2-A  TREND ENGINE + FEATURES   (branch s2-science; owns pipeline/trend, pipeline/features, pipeline/publish)
+[standard preamble applies]
+Implement PRD §7.2 step 4 (trend engine) and step 5 (features).
+- trend/mk.py: for each place and each variable in contracts §3 trends.json,
+  Mann-Kendall (pymannkendall.original_test) with Sen's slope on (a) 120
+  monthly means over 10 years and (b) the last 90 daily values. Labels per
+  contracts. Vectorise by place with a simple loop; 600×6×2 tests must finish
+  under 2 min. Write trends.json via publish/write_json.py.
+- features/build.py: one row per place per day for the last 13 months:
+  7/30/90-day rain sums and anomaly z vs the place's own climatology for that
+  calendar window (computed from the 10-year cache, smoothed ±15 days), tmax
+  and rh anomalies, soil wetness and 30-day change, fire weather index (a
+  simple Angstrom-style index from tmax, rh, wind, days since rain) over the
+  observed window and over the next 14 days (observed future in training
+  rows, forecast at inference), fires last 7/30 days, days since last
+  detection, trend slopes, lat, lon, doy sin/cos. Label = ≥ LABEL_MIN_DETECTIONS
+  MODIS detections within the next HORIZON_DAYS; label_valid False where the
+  future is not observed; split = "holdout" for the final 6 weeks.
+Until S1-A's caches exist, develop against a synthetic parquet you generate
+with the same schema (keep the generator in pipeline/dev/). Switch to real
+caches the moment they appear on the data branch.
+Handback: trends.json sample for 3 places, features.parquet shape and column
+list, label rate, runtime of each stage.
+----
+
+----  S3-A  GLOBE   (branch s3-globe; owns dashboard/src/components/globe)
+[standard preamble applies]
+Build Globe.tsx per DESIGN.md §4 and contracts.md §5 against the mock JSON in
+dashboard/public/data. MapLibre globe projection, OpenFreeMap dark style,
+atmosphere, dimmed labels, worker from /public. Places as a circle layer:
+radius and colour by the selected hazard's probability/category (RISK_STOPS)
+or by the selected trend variable's slope (diverging: falling blue, rising
+orange, |p|>0.05 muted) depending on props. Selected place: white ring.
+Legend bottom-left that switches with the mode. Props exactly as contracts §5;
+no internal state beyond refs. Fly-to on prop change. Hover tooltip with name,
+country, value. Then wire it into a minimal Dashboard.tsx shell if S4 has not
+pushed one yet (S4 owns the final shell; coordinate via the branch, do not
+fight over the file: if src/components/Dashboard.tsx exists on s4-panels,
+import your Globe there instead).
+Handback: screenshot of the globe with 20 mock places coloured by wildfire
+and a second screenshot coloured by the rain trend.
+----
+
+----  S4-A  TABLES + FRESHNESS   (branch s4-panels; owns dashboard/src/components/panels, charts, Dashboard.tsx)
+[standard preamble applies]
+Build against the mock JSON: Dashboard.tsx shell with the layout in DESIGN.md
+§3 and the app state in contracts §5; TrendsTable and HazardsTable per
+DESIGN.md §5 table rules (rank, name, country, value as mono + ramp bar,
+Sparkline, Δ chip; sortable headers; click selects and fires flyTo);
+Freshness + Sources panel per DESIGN.md chart catalogue; KPI row. All charts
+hand-built SVG with d3-scale, measured-width guard, tooltips per DESIGN.md
+§5. Use <Globe/> from s3-globe if it exists, otherwise a placeholder div.
+Handback: screenshot of the full screen at 1920×1080 with both tables
+populated from mocks and the sources panel showing valid/retrieved times.
+----
+
+=====================================================================
+DAY 1 · ~14:00 · THREE IN PARALLEL  (after S1-A's caches exist)
+=====================================================================
+
+----  S2-B  WILDFIRE MODEL + HAZARD MODULES   (branch s2-science)
+[standard preamble applies]
+Implement PRD §7.2 steps 6–10 on the real features.parquet.
+- hazards/wildfire.py: XGBoost hist, time-ordered train/holdout, early
+  stopping, isotonic calibration on holdout, PR-AUC and Brier vs the fire
+  weather index baseline; SHAP TreeExplainer top-5 per place for the current
+  day. Save model.json and metrics.
+- hazards/drought.py, heat.py, rain.py: per PRD §7.2 step 6 table, thresholds
+  from each place's own 10-year percentiles, categories from config.
+- Risk records with probability/index, severity, exposure (pop), confidence
+  per PRD step 7; 90-day hindcast history per step 8; feed.py per step 9 with
+  seeding; template sentences per step 10.
+- publish/write_json.py writes risk.json, series.json, feed.json, honesty.json
+  (mode "hindcast") exactly per contracts §3. Validate every file against the
+  schema shapes (lengths equal to places count) before writing.
+Handback: metrics (PR-AUC model vs baseline, Brier), risk.json for 3 places,
+feed.json head, and the runtime of the whole science stage.
+----
+
+----  S3-B  SEARCH + LIVE FIRES + GIBS PREP   (branch s3-globe)
+[standard preamble applies]
+Add to the globe: fires_24h.json as two circle layers (glow + dot per
+DESIGN.md §4) from the binned data; Search.tsx (input, "/" focuses it, fuzzy
+match on name + country, Enter selects + flyTo); a continent filter prop that
+dims non-matching points. Prepare, but keep behind a prop default false, a
+raster source for a GIBS WMTS layer with {date} templating (PRD §6 URL) so
+day 2's M-GIBS is a toggle away.
+Handback: screenshot with fire dots and search open with results.
+----
+
+----  S4-B  PLACE PANEL + FEED   (branch s4-panels)
+[standard preamble applies]
+Build PlacePanel: TrendChart per DESIGN.md chart catalogue (10-year monthly
+line with Sen's slope dashed, 90-day inset, mono label with slope and p),
+three AnomalySeries (rain_30d, tmax, soil_wet vs normal band from
+series.json), four HazardCards per DESIGN.md (probability/category, then
+severity, exposure, confidence, valid window; coloured left border), DriverBars
+for the selected hazard, the sentence. Build Feed from feed.json with the pulse
+on the newest alert and anomaly chips; clicking an alert selects the place and
+its hazard. Everything reads the real JSON shape from types.ts; test against
+mocks, then against the real files on the data branch via NEXT_PUBLIC_DATA_URL.
+Handback: screenshot of the place panel for one place, and of the feed.
+----
+
+=====================================================================
+DAY 1 · ~17:00 · ONE SESSION
+=====================================================================
+
+----  S1-B  GATES + CRON + DEPLOY   (branch s1-ingest; owns pipeline/publish/gates.py, .github)
+[standard preamble applies]
+Implement PRD §13.1 gates G1–G7 in pipeline/publish/gates.py writing run.json
+per contracts §3; run.py exits non-zero on any failed gate; the workflow's
+push-to-data and deploy steps run only on success. honesty.json gets the last
+10 runs appended. Add a snapshot store data/cache/published/{run_id}.parquet
+of the risk actually published. Verify: trigger the workflow, confirm the
+data branch updated, the Pages site serves the new run.json (G7), and the
+cron entry is valid. Then let it run.
+Handback: run.json of a green run, the Pages URL, and the Actions run URL.
+----
+
+----  INTEGRATE DAY 1   (one session on main)
+[standard preamble applies]
+Merge s1-ingest, s2-science, s3-globe, s4-panels into main in that order,
+resolving conflicts in favour of contracts.md. `npm run build`, `npm run
+lint`, `uv run ruff check pipeline` must pass. Point the dashboard at the
+real data branch, run it, and walk every High item H1–H12 in PRD §8 against
+the live site: screenshot each. Fix seams (a field name, a missing null
+guard) yourself; anything bigger goes in the handback as NOT DONE with the
+owning session named. Push main; confirm deploy.yml publishes.
+Handback: a checklist H1–H12 with pass/fail and a screenshot path each, the
+live URL, and the list of seams fixed.
+----
+
+=====================================================================
+DAY 2 · 09:00 · THREE IN PARALLEL
+=====================================================================
+
+----  M-GIBS   (branch s3-globe; owns dashboard/src/components/globe)
+[standard preamble applies]
+PRD M1: toggles for three GIBS layers (IMERG_Precipitation_Rate /
+GoogleMapsCompatible_Level6, MODIS_Terra_NDVI_8Day / Level9,
+MODIS_Terra_Land_Surface_Temp_Day / Level7) with a 30-day date slider,
+opacity 0.55, below the points, legend swatch per layer, and a caption with
+the layer's valid date and "observation · NASA GIBS". Handle a 404 tile day
+gracefully (step back one day).
+Handback: screenshot with the IMERG layer on.
+----
+
+----  M-HONESTY   (branch s4-panels; owns panels/Honesty*)
+[standard preamble applies]
+PRD M2: Honesty panel from honesty.json: bar pairs predicted vs observed by
+bucket, "top-20 hit rate X% vs baseline Y%", mode badge "held-out hindcast"
+or "published", last-10-runs dots from runs[] with the failing gate on hover.
+Caption per PRD §7.2 step 5 about perfect-prognosis training.
+Handback: screenshot.
+----
+
+----  M-MOVERS+CONTINENTS   (branch s2-science then s4-panels; two halves)
+[standard preamble applies]
+Half 1 (pipeline, s2-science): add to risk.json `movers` (top 10 up and down
+per hazard by Δ vs 7 days ago, from history) and `continents` (per continent:
+counts per category per hazard, and 90-day mean risk series). Note the
+addition at the bottom of contracts.md.
+Half 2 (dashboard, s4-panels): Movers tables and Continent bars + small
+multiples per DESIGN.md chart catalogue.
+Handback: JSON sample and screenshot.
+----
+
+=====================================================================
+DAY 2 · ~11:30 · TWO IN PARALLEL
+=====================================================================
+
+----  M-MODE+URL   (branch s4-panels)
+[standard preamble applies]
+PRD M5 + M7: a Now / Next-14-days mode switch in the title block that changes
+the globe colouring (current category vs forecast probability), the hazards
+table column, and the hazard cards' headline; URL state ?place=&hazard=&mode=
+&trend= read on load and written on change (replaceState).
+Handback: two screenshots, one per mode, and a shareable URL that reloads to
+the same state.
+----
+
+----  M-PAKISTAN   (branch s1-ingest for places, then s2 science rerun)
+[standard preamble applies]
+PRD M9: a dense Pakistan tier: ~150 district and tehsil centroids (GADM level
+2 or Natural Earth admin-2 if quick; otherwise the 150 largest Pakistani
+populated places), radius 30 km, appended to places with a `tier: "pk"` flag,
+ingested through the same caches (POWER first-run for new places, paced), and
+the app opening centred on Pakistan at zoom 4.5 when ?region=pk. Do NOT
+change the global tier constant.
+Handback: new place count, Actions run duration, screenshot opened on Pakistan.
+----
+
+=====================================================================
+DAY 2 · 15:00 · FREEZE, THEN POLISH + README IN PARALLEL, THEN PITCH
+=====================================================================
+
+----  POLISH   (branch s4-panels, then main)
+[standard preamble applies]
+Pipeline is frozen; UI only. Walk the live site at 1920×1080 and fix: any
+chart without a caption/legend, any number without a unit, any panel without
+valid/retrieved time, any layout jump on load, any console error. Make the
+loading and error states match DESIGN.md. Keyboard: "/" focuses search, Esc
+clears selection. Add the safety statement footer from PRD §7.4. Merge to main.
+Handback: before/after screenshots of anything changed, console clean proof.
+----
+
+----  README   (branch main; owns README.md only)
+[standard preamble applies]
+Write README.md for judges: one-paragraph pitch, the live URL, a screenshot,
+"what is changing / where / how much / so what" explained with the trend
+engine and the four hazards, every data source with link, latency and which
+of the four kinds it is (observation/forecast/risk assessment/trend), Open-Meteo
+marked as the non-NASA supplement, how the cron works and the seven gates,
+the honesty panel explained, known limitations (3-day POWER lag, 12-month
+labels, perfect-prognosis training, no flood modelling), the safety statement,
+and run instructions from a clean clone. Under 1,500 words.
+Handback: the README rendered (screenshot) and a word count.
+----
+
+----  PITCH   (any session, after POLISH)
+Write docs/pitch.md: a 3-minute script with timings against the live site:
+0:00 hook (live fires on the globe, "updated N min ago"), 0:30 the challenge
+question and the trends table, 1:15 click a place: trend → anomaly → hazard
+cards → sentence, 2:00 the honesty panel and the seven gates, 2:30 search the
+judge's city, 2:50 close with sources and limitations. Add a fallback plan
+if the site is down: screenshots folder and a 60-second screen recording list.
+Handback: the script and the screenshot list.
+----
+
+=====================================================================
+REVIEWER CHECKPOINT PROMPTS  (paste into any session; read-only)
+=====================================================================
+
+----  CHECK 12:00 day 1
+Read-only. Report: did the cold run start and is it green (Actions URL,
+duration, caches present on the data branch)? Does the globe render places
+from mocks (screenshot)? List anything blocking S2-B from starting. Do not
+change files.
+----
+----  CHECK 16:00 day 1
+Read-only. Against the live data branch, screenshot each High item H1–H12 of
+PRD §8 as it exists right now, mark pass/fail, and list the three most
+important seams for the integrator. Do not change files.
+----
+----  CHECK 09:00 day 2
+Read-only. Read honesty.json runs[] and run.json: how many runs overnight,
+how many green, which gate failed if any, average duration. Is the site
+serving the newest run_id? Recommend go/no-go for tier 2 per PRD §13.3.
+----
+
+=====================================================================
+FREE PARTNER OFFERS  (received 13 Nov) · what to do with them
+=====================================================================
+GoDaddy, free domain + hosting ... CLAIM TONIGHT (10 min). Point the domain at
+    GitHub Pages with a CNAME; a real domain reads better than github.io on
+    the pitch slide. Do not use their hosting; Pages is already wired.
+Google Cloud ...................... SKIP for the build. Firebase Hosting is a
+    fallback if Pages misbehaves. Maps API is unnecessary (OpenFreeMap, no key).
+Meteomatics ....................... OPTIONAL fallback for the forecast if
+    Open-Meteo rate-limits at tier 2. It is an official partner, so citing it
+    is safe, but it needs a key and its free limits are unknown; do not make
+    day 1 depend on it.
+Microsoft Azure / Planetary Computer  NOTE for M6 (cut). Planetary Computer's
+    STAC API serves MODIS NDVI synchronously, which is a better route than
+    AppEEARS if NDVI ever comes back into scope. Not for this weekend.
+Nothing in the offers changes the plan. The domain is the only one worth
+ten minutes.

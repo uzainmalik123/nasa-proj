@@ -1,0 +1,25 @@
+[project]
+name = "etd-pipeline"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "pyarrow>=26.0.1",
+    "pymannkendall>=1.4.3",
+    "python-dotenv>=1.2.4",
+    "requests>=2.34.2",
+    "ruff>=0.17.5",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
+    "shap>=0.54.1",
+    "xgboost-cpu>=3.4.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP", "RUF"]
+ignore = ["E402"]

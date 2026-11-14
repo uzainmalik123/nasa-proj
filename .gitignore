@@ -1,0 +1,38 @@
+# ---- Python / uv ----
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+/pipeline/data/
+
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+dashboard/public/maplibre-gl-worker.mjs
+
+# ---- secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- dashboard data: real pipeline output never lands on main; the mock set does ----
+dashboard/public/data/*.json
+!dashboard/public/data/places.json
+!dashboard/public/data/trends.json
+!dashboard/public/data/risk.json
+!dashboard/public/data/series.json
+!dashboard/public/data/fires_24h.json
+!dashboard/public/data/feed.json
+!dashboard/public/data/freshness.json
+!dashboard/public/data/honesty.json
+!dashboard/public/data/run.json
+
+# ---- misc ----
+.DS_Store
+*.log

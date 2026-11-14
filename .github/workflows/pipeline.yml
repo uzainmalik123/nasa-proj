@@ -1,0 +1,77 @@
+name: pipeline
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
+      EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
+      EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipeline/uv.lock
+
+      - name: Sync dependencies
+        working-directory: pipeline
+        run: uv sync --frozen
+
+      - name: Restore cache from the data branch
+        run: |
+          set -euo pipefail
+          mkdir -p pipeline/data/cache pipeline/data/out
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            git --work-tree=pipeline/data checkout origin/data -- cache out 2>/dev/null || true
+            git reset -q
+            echo "restored $(find pipeline/data/cache -type f | wc -l) cache files"
+          else
+            echo "no data branch yet; cold run"
+          fi
+
+      - name: Run pipeline
+        working-directory: pipeline
+        run: uv run python run.py
+
+      - name: Push data branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          stage="$(mktemp -d)"
+          mkdir -p "$stage/out" "$stage/cache"
+          find pipeline/data/out -maxdepth 1 -name '*.json' -exec cp {} "$stage/out/" \; 2>/dev/null || true
+          find pipeline/data/cache -name '*.parquet' -exec cp --parents {} "$stage/" \; 2>/dev/null || true
+          # cp --parents keeps the pipeline/data/ prefix; flatten it
+          if [ -d "$stage/pipeline/data/cache" ]; then
+            cp -r "$stage/pipeline/data/cache/." "$stage/cache/"
+            rm -rf "$stage/pipeline"
+          fi
+          cd "$stage"
+          git init -q -b data
+          git config user.name "etd-pipeline[bot]"
+          git config user.email "etd-pipeline@users.noreply.github.com"
+          git add -A
+          git commit -q -m "data: run $(date -u +%Y%m%dT%H%MZ)" --allow-empty
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+
+      - name: Trigger deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}"
