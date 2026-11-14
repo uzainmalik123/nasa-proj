@@ -46,3 +46,54 @@ after Enter: input = Dakar, SN
 ## Contract notes
 
 Dated note appended to `docs/contracts.md` (2026-11-14 15:10): optional `continent` prop on `Globe`, new `Search.tsx`, the two Dashboard lines, GIBS template exports. No JSON schema changed.
+
+---
+
+# S3 follow-up · wildfire category thresholds 0.30 / 0.60 / 0.90 (2026-11-14, same branch)
+
+Per the S2-B notes in contracts.md (09:40, 10:05) and s2b-hazards.md call 3. Probabilities are unchanged; only the chip and the ramp moved.
+
+## Diff of the two tables
+
+`src/components/globe/colour.ts` · `CATEGORY_V` (the probability at which each category starts):
+
+| category | before | after |
+|---|---|---|
+| low | 0.03 | 0.03 |
+| elevated | 0.30 | 0.30 |
+| high | 0.55 | **0.60** |
+| extreme | 0.85 | **0.90** |
+
+`src/lib/palette.ts` · `RISK_STOPS` (colours unchanged; values = today's 50 / 80 / 95 / 99th percentiles of wildfire p, run 20261114T0949Z, 554 places):
+
+| stop | before | after | colour |
+|---|---|---|---|
+| 0 | 0.00 | 0.00 | rgba(255,120,40,0) |
+| 1 | 0.05 | **0.15** | rgba(140,45,15,0.45) |
+| 2 | 0.20 | **0.59** | #9a3412 |
+| 3 | 0.40 | **0.92** | #ea580c |
+| 4 | 0.65 | **0.995** | #fbbf24 |
+| 5 | 1.00 | 1.00 | #fef3c7 |
+
+Verified against the real `risk.json`: p50 0.153 · p80 0.594 · p95 0.924 · p99 0.995; categories low 375 · elevated 76 · high 70 · extreme 33 (matches the brief).
+
+Knock-ons in `globe/`:
+- `RISK_FLOOR` is now derived from `RISK_STOPS[1][0]` (0.15) instead of a literal 0.05, so "below the first stop = 3 px muted dot" still holds; 375 low places render as watched dots.
+- Legend bar spaces the six stops evenly (the ramp encodes rank, DESIGN §2) and labels them **0 · 15 · 59 · 92 · 100 %** with the caption "ramp stops = today's 50 / 80 / 95 / 99th pct". The 0.995 stop is unlabelled because it would sit on top of 100.
+- New `CATEGORY_THRESHOLD_P` in `colour.ts` (wildfire 0.30 / 0.60 / 0.90, rain 0.10 / 0.25 / 0.50, mirrors `config.py`). The wildfire and rain legends now quote **elevated ≥ 30 % · high ≥ 60 % · extreme ≥ 90 %**. Before this change nothing in `globe/` quoted a threshold number; the tooltip shows "p% · category" and the categorical legend shows unlabelled swatches.
+- `charts/ramp.ts` `CATEGORY_V` is S4's file and is **not** edited here; it must read the same 0.03 / 0.30 / 0.60 / 0.90. `lib/palette.ts` is shared; if S4 makes the identical `RISK_STOPS` edit the hunks merge cleanly.
+
+## Screenshots (real S2 files from `../nasa-project-s2/pipeline/data/out/` + mock `fires_24h.json` and `run.json`, which S2 does not write)
+
+| Screenshot | Shows |
+|---|---|
+| `s3b/real-wildfire-global.png` | 554 places, wildfire selected, new ramp and legend |
+| `s3b/real-wildfire-legend.png` | legend crop: 0 · 15 · 59 · 92 · 100 % labels, percentile caption, 30 / 60 / 90 % thresholds |
+| `s3b/real-wildfire-lusaka.png` | search "lusaka" → Enter: ring on Lusaka (≥ 0.92, #ea580c) with neighbouring points |
+| `s3b/real-drought-global.png` | categorical legend unchanged in shape; elevated now sits at ramp 0.30 (darker than before) |
+
+The status pill reads "stale" because `run.json` is the mock; S4's imagery select wraps to a second row at 1600 px once the region list has seven continents (S4's control row, not changed here).
+
+## Is the globe calm except for the ~33 extreme places?
+
+**No.** Colour is calm below the 80th percentile, but radius still runs linearly 3 → 11 px on p (DESIGN §4), so the ~70 "high" places at 0.60–0.92 render as 8–10 px mid-orange dots and the globe shows roughly 100 strong dots, not 33. Making radius follow the same rank stops (one `interpolate` expression in `Globe.tsx` `RADIUS`) would get to 33; not done unasked.

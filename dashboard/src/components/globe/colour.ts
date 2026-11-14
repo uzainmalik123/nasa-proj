@@ -43,17 +43,28 @@ export const CONTINUOUS_HAZARD: Record<Hazard, boolean> = {
   heat: false,
 };
 
-/** Where each category sits on the risk ramp (DESIGN.md §2). */
+/**
+ * Where each category sits on the risk ramp: the probability at which it
+ * starts (config.CATEGORY_THRESHOLDS["wildfire"], 14 Nov 2026), so a chip and
+ * a globe point for the same place get the same colour. Keep identical to
+ * charts/ramp.ts.
+ */
 export const CATEGORY_V: Record<Category, number> = {
   low: 0.03,
   elevated: 0.3,
-  high: 0.55,
-  extreme: 0.85,
+  high: 0.6,
+  extreme: 0.9,
 };
 export const CATEGORIES: Category[] = ["low", "elevated", "high", "extreme"];
 
-/** Below this a place renders as a 3 px muted dot (DESIGN.md §4). */
-export const RISK_FLOOR = 0.05;
+/** Category thresholds quoted in the legend for the probability hazards (config.py). */
+export const CATEGORY_THRESHOLD_P: Record<"wildfire" | "rain", Record<Exclude<Category, "low">, number>> = {
+  wildfire: { elevated: 0.3, high: 0.6, extreme: 0.9 },
+  rain: { elevated: 0.1, high: 0.25, extreme: 0.5 },
+};
+
+/** Below the first ramp stop a place renders as a 3 px muted dot (DESIGN.md §4). */
+export const RISK_FLOOR = RISK_STOPS[1][0];
 /** Significant trend points never shrink to the muted size. */
 export const TREND_FLOOR = 0.2;
 
