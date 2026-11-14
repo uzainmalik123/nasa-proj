@@ -1,7 +1,8 @@
 """Open-Meteo 16-day daily forecast per place (PRD §7.2 step 3).
 
 One request per place; writes ``data/cache/forecast/{run_id}.parquet`` with
-``place_id, date, tmax, rain_mm, rh_min, wind_max, et0`` (contracts §4).
+``place_id, date, tmax, rain_mm, rh_min, rh_mean, wind_max, wind_mean, et0``
+(contracts §4 plus the two means, see the change log there).
 Wind is requested in m/s to match POWER's WS2M unit (note: Open-Meteo is 10 m
 wind, POWER is 2 m). Open-Meteo is a non-NASA supplement and is labelled
 "forecast" everywhere (PRD §7.4).
@@ -24,13 +25,19 @@ log = logging.getLogger("ingest.openmeteo")
 FORECAST_DIR = config.CACHE_DIR / "forecast"
 WORKERS = int(os.environ.get("OPENMETEO_WORKERS", "4"))
 PACE_S = float(os.environ.get("OPENMETEO_PACE_S", "0.15"))  # free tier: 600 req/min
+# rh_mean / wind_mean are additive to contracts §4: POWER observations are
+# daily means (RH2M, WS2M), so "perfect prognosis" training features are means
+# and inference should feed the same statistic, not the min / max.
 COLUMNS = {
     "temperature_2m_max": "tmax",
     "precipitation_sum": "rain_mm",
     "relative_humidity_2m_min": "rh_min",
+    "relative_humidity_2m_mean": "rh_mean",
     "wind_speed_10m_max": "wind_max",
+    "wind_speed_10m_mean": "wind_mean",
     "et0_fao_evapotranspiration": "et0",
 }
+DAILY = ",".join(COLUMNS)  # superset of config.OPENMETEO_DAILY
 SCHEMA = ["place_id", "date", *COLUMNS.values()]
 
 
@@ -40,7 +47,7 @@ def fetch(place_id: str, lat: float, lon: float, pacer: Pacer) -> pd.DataFrame:
         params={
             "latitude": round(lat, 4),
             "longitude": round(lon, 4),
-            "daily": config.OPENMETEO_DAILY,
+            "daily": DAILY,
             "forecast_days": config.FORECAST_DAYS,
             "wind_speed_unit": "ms",
             "timezone": "UTC",
