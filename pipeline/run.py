@@ -5,7 +5,9 @@
 
 Stages run in a fixed order and share one context dict. Each stage module
 exposes ``run(ctx: dict) -> None``. A stage that raises aborts the run; the
-gates stage decides whether the deploy may proceed by writing ``run.json``.
+gates stage always runs last and decides whether the deploy may proceed by
+writing ``run.json`` (PRD §13.1). The exit code is non-zero when a stage or a
+gate failed, so the workflow's data push and deploy steps are skipped.
 """
 
 from __future__ import annotations
@@ -34,7 +36,6 @@ STAGES = [
     ("features", features.run),
     ("hazards", hazards.run),
     ("publish", publish.run),
-    ("gates", gates.run),
 ]
 
 log = logging.getLogger("run")
@@ -75,8 +76,25 @@ def main() -> int:
         finally:
             ctx["timings"][name] = round(time.perf_counter() - t0, 3)
 
+    t0 = time.perf_counter()
+    try:
+        gates.run(ctx)
+    except Exception:
+        log.exception("stage gates failed")
+        ctx["ok"] = False
+        ctx.setdefault("failed_stage", "gates")
+    finally:
+        ctx["timings"]["gates"] = round(time.perf_counter() - t0, 3)
+
     total = (datetime.now(UTC) - started).total_seconds()
-    log.info("done in %.2fs · ok=%s · %s", total, ctx["ok"], ctx["timings"])
+    log.info(
+        "done in %.2fs · ok=%s · failed_gate=%s · failed_stage=%s · %s",
+        total,
+        ctx["ok"],
+        ctx.get("failed_gate"),
+        ctx.get("failed_stage"),
+        ctx["timings"],
+    )
     return 0 if ctx["ok"] else 1
 
 

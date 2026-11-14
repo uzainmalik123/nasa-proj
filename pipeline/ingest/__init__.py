@@ -1,4 +1,4 @@
-"""Stage ``ingest``: FIRMS + POWER + Open-Meteo caches and freshness.json.
+"""Stage ``ingest``: FIRMS + POWER + Open-Meteo caches, freshness.json and fires_24h.json.
 
 The three upstreams are independent, so they run in three threads (each with
 its own pacing). Places come from ``data/places.parquet``; in CI that file does
@@ -18,7 +18,7 @@ from datetime import UTC, datetime, timedelta
 import pandas as pd
 
 import config
-from ingest import firms, openmeteo, power
+from ingest import fires24, firms, openmeteo, power
 from ingest._http import get
 
 log = logging.getLogger("ingest")
@@ -164,6 +164,11 @@ def run(ctx: dict) -> None:
     log.info("stage ingest · run %s", ctx["run_id"])
     places = load_places()
     ctx["places"] = places
+    # G1 budget: a run that starts without a POWER cache is the cold run (60 min, else 15)
+    power_dir = config.CACHE_DIR / "power"
+    ctx["cold"] = not power_dir.exists() or not any(power_dir.glob("*.parquet"))
+    if ctx["cold"]:
+        log.warning("no POWER cache: cold run (G1 budget %d s)", config.G1_COLD_MAX_S)
     res: dict = {}
     with ThreadPoolExecutor(max_workers=3, thread_name_prefix="ingest") as ex:
         futs = {
@@ -186,6 +191,7 @@ def run(ctx: dict) -> None:
     FRESHNESS_PATH.write_text(json.dumps(freshness, indent=1) + "\n")
     ctx["ingest"] = res
     ctx["freshness"] = freshness
+    ctx["fires_24h"] = fires24.write(ctx)
     for s in freshness["sources"]:
         log.info(
             "freshness %-14s %-7s valid_for=%s records=%s",

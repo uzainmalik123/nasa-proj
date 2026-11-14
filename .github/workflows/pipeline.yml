@@ -58,10 +58,46 @@ jobs:
           fi
 
       - name: Run pipeline
+        id: pipeline
         working-directory: pipeline
         run: uv run python run.py
 
+      # run.json is written even when a stage or a gate failed (PRD §13.1)
+      - name: Gate summary
+        if: always()
+        run: |
+          set -euo pipefail
+          f=pipeline/data/out/run.json
+          if [ ! -f "$f" ]; then echo "no run.json written" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          python3 - "$f" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, sys
+          r = json.load(open(sys.argv[1]))
+          print(f"## run {r['run_id']} · {'OK' if r['ok'] else 'FAILED'} · {r['duration_s']} s · {r['n_places']} places")
+          if r.get("failed_gate") or r.get("failed_stage"):
+              print(f"failed gate: `{r.get('failed_gate')}` · failed stage: `{r.get('failed_stage')}`\n")
+          print("| gate | pass | value | detail |\n|---|---|---|---|")
+          for k, g in r["gates"].items():
+              mark = {True: "✅", False: "❌", None: "⏭"}[g["pass"]]
+              print(f"| {k} | {mark} | {g['value']} | {g.get('detail', '')} |")
+          m = r.get("metrics") or {}
+          print(f"\nPR-AUC {m.get('pr_auc')} · baseline {m.get('baseline_pr_auc')} · Brier {m.get('brier')}")
+          PY
+          cat "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep run.json of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-${{ github.run_id }}
+          path: |
+            pipeline/data/out/run.json
+            pipeline/data/out/honesty.json
+            pipeline/data/out/freshness.json
+          if-no-files-found: ignore
+
+      # everything below runs only when every stage and every gate passed
       - name: Push data branch
+        if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -87,7 +123,26 @@ jobs:
           git commit -q -m "data: run $(date -u +%Y%m%dT%H%MZ)" --allow-empty
           git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
 
+      - name: G7 · live run.json carries the new run id
+        if: success()
+        run: |
+          set -euo pipefail
+          want="$(python3 -c 'import json;print(json.load(open("pipeline/data/out/run.json"))["run_id"])')"
+          url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/data/out/run.json?v=${want}"
+          for i in $(seq 1 18); do
+            got="$(curl -fsSL "$url" | python3 -c 'import json,sys;print(json.load(sys.stdin)["run_id"])' || true)"
+            if [ "$got" = "$want" ]; then
+              echo "G7 pass: live run.json is $got"
+              echo "G7_deploy: pass ($url)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "live run.json is '${got:-unreachable}', want $want (try $i)"; sleep 10
+          done
+          echo "G7 fail: live run.json never served $want" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       - name: Trigger deploy
+        if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}"
