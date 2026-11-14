@@ -40,11 +40,16 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 - **Checked:** LST at level 7 has the same ordering problem; the ramp is also dark over hot land, which fights the dark basemap.
 - **Fix sketch (S3, same change as KI-4):** layer order + opacity; consider 45 % for LST. If still unreadable, add a "blend" option that only draws the raster over land outside the selected continent's places.
 
-### KI-7 · Dashboard first paint waits on ~7.5 MB of JSON
-- **Seen:** headless Chromium showed "loading… CONNECTING" for 10–20 s on the Pages site before the tables filled; all nine fetches returned 200.
-- **Checked:** `trends.json` 2.7 MB, `series.json` 2.5 MB, `risk.json` 2.2 MB, served from raw.githubusercontent.com (no compression negotiation guaranteed, ~5 min CDN cache).
-- **Cause:** every per-place series (120 monthly values × 6 variables × 554 places, 90-day series × 10 arrays × 554) ships on first load.
-- **Fix sketch (S2 + S4, medium):** publish `series_long` and the 90-day series as separate per-place or chunked files loaded on selection; keep `trends.json` to slopes/p/labels (~200 KB). Or gzip-serve from Pages by copying `out/` into the build. Day-2 decision.
+### KI-7 · Dashboard takes up to a minute before anything useful appears · **priority**
+- **Seen:** reviewer: ~1 min of "loading… CONNECTING" on the Pages site, long enough for a visitor to leave. Headless Chromium from a fast link: 10–20 s.
+- **Checked (20:30 PKT):** raw.githubusercontent.com does gzip; on the wire the nine files are ~1.8 MB (trends 945 KB, series 522 KB, risk 255 KB, fires 41 KB, places 16 KB, rest tiny), ~8 s fetched one after another from here, so a slow link easily turns that into 30–60 s. `loadAll()` fetches `run.json` first and only then the other eight (one extra round trip), then renders nothing until all nine have parsed: 7.5 MB of JSON, 2.7 MB of it `trends.series_long` (120 months × 6 variables × 554 places), which no panel needs until a place is selected.
+- **Cause:** everything-first loading. First paint needs ~450 KB gzipped (places, risk `now`, trend slopes/labels, fires); the other ~1.4 MB is per-place detail.
+- **Fix sketch, staged:**
+  1. **Today, S4, small:** fetch all nine in parallel (drop the run.json-first step; use a timestamp cache-buster), render the globe and KPIs as soon as `places` + `risk` arrive, tables as `trends` arrives, skeletons meanwhile; show a progress line ("3 of 9 files") instead of "connecting".
+  2. **Day 2, S2 + S4, medium:** split the published files into a *summary* set for first paint and *detail* files loaded on demand: `risk.json` keeps `now`, `model`, `valid_*`; `trends.json` keeps `long`/`short` slopes, p, labels; `series_long`, the 90-day series, the hazard `history`, `drivers` and `text` move to `out/place/{place_id}.json` (~10–15 KB gzipped each, 554 files on the data branch) fetched when a place is selected or hovered. First paint drops to ~400 KB.
+  3. **Then, S3, small:** prefetch the detail files of the places in view (nearest N to the globe centre, re-run on `moveend`), which is the "load where the user is, then more" behaviour; the feed and the top-20 table prefetch their own rows.
+  4. **Optional:** copy `out/` into the Pages build at deploy time so the files come from the Pages CDN with `Cache-Control` tuned to the 3 h cadence, instead of raw.githubusercontent's 5 min `max-age=300`.
+- **Contract impact:** step 2 changes `contracts.md` §3 (new `place/{id}.json`, slimmer `risk.json` / `trends.json`) and `lib/types.ts`; needs a dated note and S2 + S4 in the same session.
 
 ### KI-8 · Open-Meteo on GitHub runners: 7 min for 23 requests, and a shared per-IP quota
 - **Seen:** green run 20261114T1423Z: 23 forecast requests took 14:23:38 → 14:30:27 on the runner versus 0.8 s each from a home IP. Earlier the same day a runner IP was banned (429, Retry-After until midnight UTC) before our first request.
