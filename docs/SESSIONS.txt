@@ -122,7 +122,11 @@ writing the parquet caches defined in contracts.md §4.
   2016-01-01), parameters T2M,T2M_MAX,PRECTOTCORR,RH2M,WS2M,GWETROOT,GWETTOP,
   community=AG. Pace at POWER_PACE_S between requests, retry 3× with backoff
   on 429/5xx. Replace -999 with null. One parquet per place.
-- firms.py: (a) live: world/1 for FIRMS_LIVE_SOURCE and for MODIS_NRT;
+- firms.py: (a) live: fetch world/2 (NOT world/1: day_range counts from
+  today UTC, so world/1 returns zero rows early in the day) for
+  FIRMS_LIVE_SOURCE and for MODIS_NRT, then keep rows whose acq_date+acq_time
+  fall within the last 24 h, and dedupe on (lat, lon, acq_date, acq_time,
+  satellite) across runs;
   (b) history: MODIS_SP in 5-day chunks (world is capped at 5 days) back 12
   months, skipping chunks already cached; filter type==0 (vegetation fire)
   for counts; KD-tree join (scipy cKDTree on unit vectors) to places within

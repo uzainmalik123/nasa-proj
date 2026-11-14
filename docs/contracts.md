@@ -167,3 +167,4 @@ One row each for FIRMS, POWER, Open-Meteo, GIBS, Natural Earth.
 
 ## Change log
 - 2026-11-13 · initial.
+- 2026-11-14 08:40 · S0: FIRMS_LIVE_SOURCE = VIIRS_NOAA21_NRT (SNPP NRT ended 2 Nov 2026). FIRMS `world/N` counts days from today UTC, so live pulls use `world/2` filtered to the last 24 h, never `world/1`. Places: 554 at tier 1.
