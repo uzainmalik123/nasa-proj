@@ -69,9 +69,8 @@ const L_FIRE_GLOW = "fires-glow";
 const L_FIRE_DOT = "fires-dot";
 const L_GIBS = "gibs";
 
-const RADIUS: ExpressionSpecification = [
-  "interpolate", ["linear"], ["coalesce", ["feature-state", "v"], 0], 0, 3, 1, 11,
-];
+// radius in px is computed in colour.ts (rank breakpoints for risk, linear for trend)
+const RADIUS: ExpressionSpecification = ["coalesce", ["feature-state", "r"], 3];
 const SELECTED_RADIUS: ExpressionSpecification = ["*", 1.5, RADIUS];
 const NO_SELECTION: ExpressionSpecification = ["==", ["id"], -1];
 
