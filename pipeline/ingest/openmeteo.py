@@ -214,10 +214,20 @@ def fill_missing_days(
 # ---- stage -------------------------------------------------------------------
 
 
-def _reuse(path: Path, why: str) -> dict:
-    df = pd.read_parquet(path, columns=["place_id", "date"])
+def _reuse(
+    path: Path, why: str, run_id: str, triples: list[tuple[str, float, float]], today: date
+) -> dict:
+    """Reuse a cached forecast; still patch any all-null forecast day (one cheap request)."""
     t = run_time(path.stem)
     log.warning("forecast: reusing %s (%s, retrieved %s)", path.name, why, t.strftime("%H:%MZ"))
+    df = pd.read_parquet(path)
+    filled = {"places": 0, "rows": 0, "unfilled": 0}
+    if not missing_forecast_rows(df, today).empty:
+        df, filled = fill_missing_days(df, triples, today, Pacer(PACE_S))
+        if filled["rows"]:
+            path = FORECAST_DIR / f"{run_id}.parquet"
+            df.sort_values(["place_id", "date"]).to_parquet(path, index=False)
+            log.info("forecast: cached run + fill written → %s", path.name)
     return {
         "ok": int(df["place_id"].nunique()),
         "failed": [],
@@ -225,8 +235,8 @@ def _reuse(path: Path, why: str) -> dict:
         "path": str(path),
         "first": df["date"].min().isoformat() if len(df) else None,
         "last": df["date"].max().isoformat() if len(df) else None,
-        "filled": {"places": 0, "rows": 0, "unfilled": 0},
-        "reused": path.stem,
+        "filled": filled,
+        "reused": t.strftime(config.RUN_ID_FORMAT),
         "retrieved_at": t,
     }
 
@@ -235,10 +245,14 @@ def run(places: pd.DataFrame, run_id: str) -> dict:
     FORECAST_DIR.mkdir(parents=True, exist_ok=True)
     started = datetime.now(UTC)
     today = started.date()
+    triples = [(p.id, float(p.lat), float(p.lon)) for p in places.itertuples(index=False)]
     prev_path = newest_cached(FORECAST_DIR, exclude=run_id)
     prev_age_h = (started - run_time(prev_path.stem)).total_seconds() / 3600 if prev_path else None
-    if prev_path and prev_age_h < MIN_AGE_H:
-        return _reuse(prev_path, f"{prev_age_h:.1f} h old, under OPENMETEO_MIN_AGE_H={MIN_AGE_H}")
+    # a file from an earlier UTC day covers one forecast day too few for today
+    prev_today = prev_path is not None and run_time(prev_path.stem).date() == today
+    if prev_path and prev_today and prev_age_h < MIN_AGE_H:
+        why = f"{prev_age_h:.1f} h old, under OPENMETEO_MIN_AGE_H={MIN_AGE_H}"
+        return _reuse(prev_path, why, run_id, triples, today)
 
     prev = pd.read_parquet(prev_path) if prev_path else None
     past_days = PAST_DAYS
@@ -248,7 +262,6 @@ def run(places: pd.DataFrame, run_id: str) -> dict:
     parts: list[pd.DataFrame] = []
     failures: list[str] = []
     banned: RateLimited | None = None
-    triples = [(p.id, float(p.lat), float(p.lon)) for p in places.itertuples(index=False)]
     size = max(1, BATCH)
     batches = [triples[i : i + size] for i in range(0, len(triples), size)]
     done = 0
@@ -298,7 +311,8 @@ def run(places: pd.DataFrame, run_id: str) -> dict:
             )
     if banned is not None:
         if prev_path and prev_age_h <= config.G3_FORECAST_MAX_AGE_H:
-            return _reuse(prev_path, f"rate limited for {banned.retry_after} s")
+            why = f"rate limited for {banned.retry_after} s"
+            return _reuse(prev_path, why, run_id, triples, today)
         raise RuntimeError(
             f"open-meteo rate limited ({banned.retry_after} s) and no forecast cache within "
             f"{config.G3_FORECAST_MAX_AGE_H} h"

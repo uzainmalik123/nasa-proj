@@ -68,11 +68,45 @@ def cache(tmp_path, monkeypatch):
     return tmp_path
 
 
-def _prev_file(cache, hours_ago, now):
+def _prev_file(cache, hours_ago, now, null_days=()):
     rid = (now - timedelta(hours=hours_ago)).strftime(config.RUN_ID_FORMAT)
-    df = pd.concat([_frame(p, now.date(), start=-92) for p in PLACES["id"]])
+    df = pd.concat([_frame(p, now.date(), start=-92, null_days=null_days) for p in PLACES["id"]])
     df.to_parquet(cache / f"{rid}.parquet", index=False)
     return rid
+
+
+def test_reuse_still_fills_holes(cache, monkeypatch):
+    """A cache fetched before the GFS fill existed (run 43590829949 failed G2 on this)."""
+    now = datetime.now(UTC)
+    rid = _prev_file(cache, 1, now, null_days=(15,))
+    calls = []
+
+    def fake_fetch(batch, pacer, model=None, past_days=2):
+        calls.append(model)
+        return [_frame(pid, now.date(), v=99.0) for pid, _, _ in batch]
+
+    monkeypatch.setattr(openmeteo, "fetch_batch", fake_fetch)
+    res = openmeteo.run(PLACES, "20991231T0000Z")
+    assert calls == [openmeteo.FALLBACK_MODEL] and res["reused"] == rid
+    assert res["filled"]["rows"] == 2 and res["path"].endswith("20991231T0000Z.parquet")
+    out = pd.read_parquet(res["path"])
+    assert openmeteo.missing_forecast_rows(out, now.date()).empty
+    assert res["retrieved_at"] == openmeteo.run_time(
+        rid
+    )  # the forecast itself is still the old one
+
+
+def test_reuse_fill_tolerates_a_ban(cache, monkeypatch):
+    now = datetime.now(UTC)
+    rid = _prev_file(cache, 1, now, null_days=(15,))
+
+    def banned(*a, **k):
+        raise RateLimited("open-meteo", 40000)
+
+    monkeypatch.setattr(openmeteo, "fetch_batch", banned)
+    res = openmeteo.run(PLACES, "20991231T0000Z")
+    assert res["reused"] == rid and res["filled"]["unfilled"] == 2
+    assert res["path"].endswith(f"{rid}.parquet")  # nothing new written
 
 
 def test_reuses_fresh_cache_without_requests(cache, monkeypatch):
