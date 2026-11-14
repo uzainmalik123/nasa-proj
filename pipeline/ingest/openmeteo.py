@@ -1,6 +1,7 @@
 """Open-Meteo 16-day daily forecast per place (PRD §7.2 step 3).
 
-One request per place; writes ``data/cache/forecast/{run_id}.parquet`` with
+One request per place (16 forecast days plus the last 92 days of model
+analysis); writes ``data/cache/forecast/{run_id}.parquet`` with
 ``place_id, date, tmax, rain_mm, rh_min, rh_mean, wind_max, wind_mean, et0``
 (contracts §4 plus the two means, see the change log there).
 Wind is requested in m/s to match POWER's WS2M unit (note: Open-Meteo is 10 m
@@ -38,6 +39,10 @@ COLUMNS = {
     "et0_fao_evapotranspiration": "et0",
 }
 DAILY = ",".join(COLUMNS)  # superset of config.OPENMETEO_DAILY
+# Also pull the trailing 92 days of the model's own analysis (dates before
+# today, same columns). S2 calibrates the forecast per place on the overlap
+# with POWER. Rows per place: ~92 + FORECAST_DAYS. No "future only" filter.
+PAST_DAYS = int(os.environ.get("OPENMETEO_PAST_DAYS", "92"))
 SCHEMA = ["place_id", "date", *COLUMNS.values()]
 
 
@@ -49,6 +54,7 @@ def fetch(place_id: str, lat: float, lon: float, pacer: Pacer) -> pd.DataFrame:
             "longitude": round(lon, 4),
             "daily": DAILY,
             "forecast_days": config.FORECAST_DAYS,
+            "past_days": PAST_DAYS,
             "wind_speed_unit": "ms",
             "timezone": "UTC",
         },
