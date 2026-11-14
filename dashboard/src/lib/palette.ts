@@ -20,11 +20,18 @@ export const P = {
   good:     "#0ca30c",
 };
 
+/**
+ * Sequential risk ramp. Colours are fixed (DESIGN.md §2); the stop values are
+ * the 50 / 80 / 95 / 99th percentiles of wildfire p across all places on the
+ * first real scoring run (run 20261114T0949Z, 554 places, set 14 Nov 2026), so
+ * the ramp reads "unusual for the world right now" and the legend quotes the
+ * probability at each stop.
+ */
 export const RISK_STOPS: [number, string][] = [
   [0.00, "rgba(255,120,40,0)"],
-  [0.05, "rgba(140,45,15,0.45)"],
-  [0.20, "#9a3412"],
-  [0.40, "#ea580c"],
-  [0.65, "#fbbf24"],
+  [0.15, "rgba(140,45,15,0.45)"],
+  [0.59, "#9a3412"],
+  [0.92, "#ea580c"],
+  [0.995, "#fbbf24"],
   [1.00, "#fef3c7"],
 ];

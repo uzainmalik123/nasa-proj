@@ -16,13 +16,21 @@ export function riskColour(v: number): string {
   return riskScale(Math.max(0, Math.min(1, v)));
 }
 
-/** Where each category sits on the ramp (DESIGN.md §2, matches the globe). */
+/**
+ * Where each category sits on the ramp: the wildfire probability at which it
+ * starts (config.CATEGORY_THRESHOLDS, S2-B note 2026-11-14 10:05), so a chip
+ * and a globe point for the same place get the same colour. Keep identical to
+ * globe/colour.ts.
+ */
 export const CATEGORY_V: Record<Category, number> = {
   low: 0.03,
-  elevated: 0.3,
-  high: 0.55,
-  extreme: 0.85,
+  elevated: 0.30,
+  high: 0.60,
+  extreme: 0.90,
 };
+
+/** Wildfire category thresholds as quoted in legends: "30 / 60 / 90 %". */
+export const WILDFIRE_THRESHOLDS_PCT = `${CATEGORY_V.elevated * 100} / ${CATEGORY_V.high * 100} / ${CATEGORY_V.extreme * 100} %`;
 
 /** Series colour bound to a hazard (DESIGN.md §5 hazard card borders). */
 export const HAZARD_COLOUR: Record<Hazard, string> = {

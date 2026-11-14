@@ -10,12 +10,36 @@ export type Colouring =
   | { kind: "risk"; hazard: Hazard; continuous: boolean; validFrom?: string; validTo?: string }
   | { kind: "trend"; variable: Variable; unit: string; scale: number; window: string };
 
-/** Per-feature state pushed to MapLibre: magnitude 0..1, colour, opacity. */
+/** Per-feature state pushed to MapLibre: magnitude 0..1, radius px, colour, opacity. */
 export interface PointState {
   v: number;
+  r: number;
   color: string;
   o: number;
   sig: boolean;
+}
+
+/** Radius range for a place point (DESIGN.md §4: 3 px watched → 11 px). */
+export const R_MIN = 3;
+export const R_MAX = 11;
+
+/**
+ * Risk radius follows the same rank breakpoints as the colour ramp, so size
+ * and colour agree on "unusual for the world right now": watched below the
+ * 50th pct, small to the 80th, mid to the 95th, full at the 99th.
+ */
+const RISK_RADIUS_PX = [3, 3.5, 5, 8, 11, 11];
+const riskRadius = scaleLinear<number>()
+  .domain(RISK_STOPS.map((s) => s[0]))
+  .range(RISK_RADIUS_PX)
+  .clamp(true);
+
+/** Trend radius: linear on the normalised |slope| (floored at TREND_FLOOR). */
+export function trendRadius(v: number): number {
+  return R_MIN + (R_MAX - R_MIN) * Math.max(0, Math.min(1, v));
+}
+export function riskRadiusPx(v: number): number {
+  return riskRadius(v);
 }
 
 export const HAZARD_LABEL: Record<Hazard, string> = {
@@ -43,17 +67,28 @@ export const CONTINUOUS_HAZARD: Record<Hazard, boolean> = {
   heat: false,
 };
 
-/** Where each category sits on the risk ramp (DESIGN.md §2). */
+/**
+ * Where each category sits on the risk ramp: the probability at which it
+ * starts (config.CATEGORY_THRESHOLDS["wildfire"], 14 Nov 2026), so a chip and
+ * a globe point for the same place get the same colour. Keep identical to
+ * charts/ramp.ts.
+ */
 export const CATEGORY_V: Record<Category, number> = {
   low: 0.03,
   elevated: 0.3,
-  high: 0.55,
-  extreme: 0.85,
+  high: 0.6,
+  extreme: 0.9,
 };
 export const CATEGORIES: Category[] = ["low", "elevated", "high", "extreme"];
 
-/** Below this a place renders as a 3 px muted dot (DESIGN.md §4). */
-export const RISK_FLOOR = 0.05;
+/** Category thresholds quoted in the legend for the probability hazards (config.py). */
+export const CATEGORY_THRESHOLD_P: Record<"wildfire" | "rain", Record<Exclude<Category, "low">, number>> = {
+  wildfire: { elevated: 0.3, high: 0.6, extreme: 0.9 },
+  rain: { elevated: 0.1, high: 0.25, extreme: 0.5 },
+};
+
+/** Below the first ramp stop a place renders as a 3 px muted dot (DESIGN.md §4). */
+export const RISK_FLOOR = RISK_STOPS[1][0];
 /** Significant trend points never shrink to the muted size. */
 export const TREND_FLOOR = 0.2;
 
@@ -158,33 +193,54 @@ export function pickColouring(
   };
 }
 
-/** Feature state for every place under the given colouring. */
+/** Opacity of a place outside the active continent filter. */
+export const FILTERED_OPACITY = 0.12;
+
+/**
+ * Feature state for every place under the given colouring. `keep` is the set
+ * of indices inside the continent filter; places outside it are dimmed to a
+ * 3 px muted dot at FILTERED_OPACITY. null = no filter.
+ */
 export function pointStates(
   c: Colouring,
   n: number,
   risk: { now: RiskNow[] } | null,
   trends: TrendsFile | null,
+  keep: Set<number> | null = null,
 ): PointState[] {
   const out: PointState[] = new Array(n);
-  const dim: PointState = { v: 0, color: P.muted, o: 0.5, sig: false };
+  const dim: PointState = { v: 0, r: R_MIN, color: P.muted, o: 0.5, sig: false };
+  const off: PointState = { v: 0, r: R_MIN, color: P.muted, o: FILTERED_OPACITY, sig: false };
+  const skip = (i: number) => keep != null && !keep.has(i);
   if (c.kind === "risk") {
     for (let i = 0; i < n; i++) {
+      if (skip(i)) { out[i] = off; continue; }
       const r = risk?.now[i];
       if (!r) { out[i] = dim; continue; }
       const v = hazardMagnitude(c.hazard, r);
-      out[i] = v < RISK_FLOOR ? dim : { v, color: riskColour(v), o: 1, sig: true };
+      out[i] = v < RISK_FLOOR ? dim : { v, r: riskRadius(v), color: riskColour(v), o: 1, sig: true };
     }
     return out;
   }
   const vi = trends ? trends.variables.indexOf(c.variable) : -1;
   for (let i = 0; i < n; i++) {
+    if (skip(i)) { out[i] = off; continue; }
     const s = trends?.long.slope[i]?.[vi];
     const p = trends?.long.p[i]?.[vi];
     if (s == null || p == null || p >= 0.05) { out[i] = dim; continue; }
     const t = Math.max(-1, Math.min(1, s / c.scale));
-    out[i] = { v: Math.max(TREND_FLOOR, Math.abs(t)), color: trendColour(t), o: 1, sig: true };
+    const v = Math.max(TREND_FLOOR, Math.abs(t));
+    out[i] = { v, r: trendRadius(v), color: trendColour(t), o: 1, sig: true };
   }
   return out;
+}
+
+/** Indices of places on `continent`; null when no continent is chosen. */
+export function continentSet(places: { continent: string }[], continent: string | null | undefined): Set<number> | null {
+  if (!continent) return null;
+  const set = new Set<number>();
+  places.forEach((p, i) => { if (p.continent === continent) set.add(i); });
+  return set;
 }
 
 // ---- formatting ------------------------------------------------------------

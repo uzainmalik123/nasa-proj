@@ -1,0 +1,41 @@
+control (off): IMAGERY | RAIN | VEGETATION | SURFACE TEMP | NASA GIBS · last 30 days
+shot gibs-off
+control (rain): IMAGERY | RAIN | VEGETATION | SURFACE TEMP | 10-16 | 11-14 | 2026-11-14 | valid 2026-11-13 · observation · NASA GIBS · GPM IMERG half-hourly rate, one daily image · no image for 2026-11-14 yet, stepped back 1 day
+legend (rain): WILDFIRE · NEXT 14 DAYS | valid 2026-11-14 → 2026-11-28 | 0 | 15 | 59 | 92 | 100 % | calibrated probability | ramp stops = today's 50 / 80 / 95 / 99th pct | elevated ≥ 30 % · high ≥ 60 % · extreme ≥ 90 % | rain rate (IMERG) | 0.1 | 50 mm/h | valid 2026-11-13 · observation · NASA GIBS | active fire detection (FIRMS)
+shot gibs-imerg-on
+shot gibs-imerg-on-globe
+control (rain −12 d): IMAGERY | RAIN | VEGETATION | SURFACE TEMP | 10-16 | 11-14 | 2026-11-02 | valid 2026-11-02 · observation · NASA GIBS · GPM IMERG half-hourly rate, one daily image
+url after scrub: http://localhost:8765/?mode=next14&hazard=wildfire
+shot gibs-imerg-minus12
+control (ndvi): IMAGERY | RAIN | VEGETATION | SURFACE TEMP | 10-16 | 11-14 | 2026-11-02 | valid 2026-11-02 · observation · NASA GIBS · MODIS Terra 8-day composite, the period containing the date
+legend (ndvi): WILDFIRE · NEXT 14 DAYS | valid 2026-11-14 → 2026-11-28 | 0 | 15 | 59 | 92 | 100 % | calibrated probability | ramp stops = today's 50 / 80 / 95 / 99th pct | elevated ≥ 30 % · high ≥ 60 % · extreme ≥ 90 % | vegetation (MODIS NDVI) | 0 | 1 NDVI | valid 2026-11-02 · observation · NASA GIBS | active fire detection (FIRMS)
+shot gibs-ndvi-on
+control (lst): IMAGERY | RAIN | VEGETATION | SURFACE TEMP | 10-16 | 11-14 | 2026-11-02 | valid 2026-11-02 · observation · NASA GIBS · MODIS Terra daytime pass, land only
+legend (lst): WILDFIRE · NEXT 14 DAYS | valid 2026-11-14 → 2026-11-28 | 0 | 15 | 59 | 92 | 100 % | calibrated probability | ramp stops = today's 50 / 80 / 95 / 99th pct | elevated ≥ 30 % · high ≥ 60 % · extreme ≥ 90 % | surface temp (MODIS LST) | −30 | 50 °C | valid 2026-11-02 · observation · NASA GIBS | active fire detection (FIRMS)
+shot gibs-lst-on
+control (off again): IMAGERY | RAIN | VEGETATION | SURFACE TEMP | NASA GIBS · last 30 days
+gibs layer present after off: true (canvas)
+control (rain, ?date=2026-11-14): IMAGERY | RAIN | VEGETATION | SURFACE TEMP | 10-16 | 11-14 | 2026-11-14 | valid 2026-11-13 · observation · NASA GIBS · GPM IMERG half-hourly rate, one daily image · no image for 2026-11-14 yet, stepped back 1 day
+GIBS tile responses: 190 × 200, 1 × 404
+probes (HEAD):
+   404 IMERG_Precipitation_Rate/default/2026-11-14/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-13/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-10/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-12/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-11/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-02/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-09/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-07/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-05/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-04/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-08/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-06/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-03/GoogleMapsCompatible_Level6/0/0/0.png
+   200 MODIS_Terra_NDVI_8Day/default/2026-11-02/GoogleMapsCompatible_Level9/0/0/0.png
+   200 MODIS_Terra_Land_Surface_Temp_Day/default/2026-11-02/GoogleMapsCompatible_Level7/0/0/0.png
+   404 IMERG_Precipitation_Rate/default/2026-11-14/GoogleMapsCompatible_Level6/0/0/0.png
+   200 IMERG_Precipitation_Rate/default/2026-11-13/GoogleMapsCompatible_Level6/0/0/0.png
+console errors: 3
+   Failed to load resource: the server responded with a status of 404 ()
+   Failed to load resource: the server responded with a status of 404 ()
+   Failed to load resource: the server responded with a status of 404 ()

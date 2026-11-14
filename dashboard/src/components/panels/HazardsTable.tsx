@@ -6,10 +6,11 @@
 import { useMemo, useState } from "react";
 import Sparkline from "@/components/charts/Sparkline";
 import RampBar from "@/components/charts/RampBar";
-import { CATEGORY_V, deltaColour, riskColour } from "@/components/charts/ramp";
+import { CATEGORY_V, WILDFIRE_THRESHOLDS_PCT, deltaColour, riskColour } from "@/components/charts/ramp";
+import { RISK_STOPS } from "@/lib/palette";
 import { CATEGORY_ORDER, CONFIDENCE_ORDER, HAZARD_LABEL, fmtCount, fmtDay, pct, signed } from "@/lib/format";
 import type { Category, Confidence, Hazard, Place, RiskFile, RiskNow } from "@/lib/types";
-import { Card, Chip, DeltaChip, ROW_CLASS, ROW_SELECTED, SortHeader, TABLE_SCROLL, cmp, nextSort, type SortState } from "./ui";
+import { Card, CategoryChip, DeltaChip, ROW_CLASS, ROW_SELECTED, SortHeader, TABLE_SCROLL, cmp, nextSort, type SortState } from "./ui";
 
 type Key = "rank" | "name" | "country" | "value" | "delta" | "category" | "exposure";
 
@@ -55,8 +56,11 @@ function fmtDelta(h: Hazard, d: number | null): string {
   }
 }
 
+/** "15 · 59 · 92 · 99.5 %": the ramp's inner stops, today's 50/80/95/99th percentiles. */
+const RAMP_LABEL = RISK_STOPS.slice(1, -1).map(([v]) => `${+(v * 100).toFixed(1)}`).join(" · ") + " %";
+
 const UNIT_NOTE: Record<Hazard, string> = {
-  wildfire: "calibrated probability of ≥3 fire detections within 50 km in the next 14 days",
+  wildfire: `calibrated probability of ≥3 fire detections within 50 km in the next 14 days · elevated / high / extreme at ${WILDFIRE_THRESHOLDS_PCT}`,
   rain: "probability of an unusually wet week · not a flood forecast",
   drought: "standardised deficit index · negative = drier than the place's own normal",
   heat: "forecast days above the place's own 95th-percentile max temperature",
@@ -123,7 +127,7 @@ export default function HazardsTable({ places, risk, hazard, selected, filter, o
         <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
           <span>
             <i className="mr-1 inline-block h-[10px] w-4 rounded-sm align-middle" style={{ background: `linear-gradient(to right, ${riskColour(0.05)}, ${riskColour(1)})` }} />
-            risk ramp
+            risk ramp {RAMP_LABEL} = 50 / 80 / 95 / 99th percentile of today&apos;s wildfire p
           </span>
           <span>spark = last {SPARK_DAYS} days of hindcast · Δ vs 7 days ago</span>
           <span>{UNIT_NOTE[hazard]} · valid {risk?.valid_from ?? "–"} → {risk?.valid_to ?? "–"} · risk assessment</span>
@@ -194,10 +198,9 @@ export default function HazardsTable({ places, risk, hazard, selected, filter, o
                     />
                   </td>
                   <td className="pr-1">
-                    <Chip colour={riskColour(Math.max(0.25, CATEGORY_V[r.category]))} title={`confidence ${r.confidence}`}>
-                      {r.category}
-                      <span className="ml-0.5 opacity-60">{"·".repeat(CONFIDENCE_ORDER.indexOf(r.confidence) + 1)}</span>
-                    </Chip>
+                    <CategoryChip category={r.category} title={`confidence ${r.confidence}`}>
+                      <span className="opacity-60">{"·".repeat(CONFIDENCE_ORDER.indexOf(r.confidence) + 1)}</span>
+                    </CategoryChip>
                   </td>
                   <td className="text-right font-mono text-ink-2">{fmtCount(r.exposure)}</td>
                 </tr>

@@ -2,8 +2,9 @@
 // Globe.tsx · DESIGN.md §4, contracts.md §5. MapLibre globe with places
 // coloured by the selected hazard (mode "next14") or by the selected trend
 // variable's 10-year slope (mode "now"), live FIRMS bins on top, optional
-// GIBS raster underneath. Owns no React state: everything is props → map.
-import { useEffect, useMemo, useRef } from "react";
+// GIBS raster underneath (off until `gibsLayer` is set), continent filter
+// dims places elsewhere. Owns no React state: everything is props → map.
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Map as MapLibreMap, setWorkerUrl,
   type ExpressionSpecification, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent,
@@ -13,7 +14,16 @@ import { MAPLIBRE_WORKER_URL } from "@/lib/maplibre-worker";
 import { P } from "@/lib/palette";
 import type { FiresFile, Hazard, Mode, Place, RiskFile, TrendsFile, Variable } from "@/lib/types";
 import Legend from "./Legend";
-import { hazardText, pickColouring, pointStates, trendText, type Colouring } from "./colour";
+import GibsControl from "./GibsControl";
+import { continentSet, hazardText, pickColouring, pointStates, trendText, type Colouring } from "./colour";
+import {
+  GIBS_LAYERS, clampGibsDate, gibsNewestDate, gibsTileUrl, resolveGibsDate, type GibsLayerKey, type GibsValid,
+} from "./gibs";
+
+// the GIBS registry and URL helpers live in ./gibs; re-exported so S3-B's imports keep working
+export { GIBS_LAYERS, GIBS_WMTS_TEMPLATE, gibsTileUrl, type GibsLayerKey } from "./gibs";
+/** @deprecated use gibsNewestDate from ./gibs */
+export const gibsDefaultDate = gibsNewestDate;
 
 if (typeof window !== "undefined") setWorkerUrl(MAPLIBRE_WORKER_URL);
 
@@ -29,19 +39,6 @@ export interface FlyTarget {
   zoom?: number;
 }
 
-/**
- * GIBS WMTS layers the overlay can show (M1). Key is what `gibsLayer` takes.
- * `level` is the layer's GoogleMapsCompatible tile set; `lagDays` is how far
- * behind today the newest daily image usually is (checked 14 Nov 2026).
- */
-export const GIBS_LAYERS = {
-  rain: { id: "IMERG_Precipitation_Rate", ext: "png", level: 6, lagDays: 2, label: "rain rate (IMERG)" },
-  ndvi: { id: "MODIS_Terra_NDVI_8Day", ext: "png", level: 9, lagDays: 1, label: "vegetation (MODIS NDVI)" },
-  lst: { id: "MODIS_Terra_Land_Surface_Temp_Day", ext: "png", level: 7, lagDays: 1, label: "surface temp (MODIS LST)" },
-  truecolor: { id: "MODIS_Terra_CorrectedReflectance_TrueColor", ext: "jpg", level: 9, lagDays: 1, label: "true colour (MODIS)" },
-} as const;
-export type GibsLayerKey = keyof typeof GIBS_LAYERS;
-
 export interface GlobeProps {
   places: Place[];
   risk: RiskFile | null;
@@ -53,8 +50,15 @@ export interface GlobeProps {
   selected: number | null;
   onSelect: (i: number | null) => void;
   flyTo: FlyTarget | null;
-  gibsLayer: GibsLayerKey | null;
-  gibsDate: string | null; // YYYY-MM-DD; defaults to today minus the layer's lag
+  gibsLayer: GibsLayerKey | null; // null (the default) = no raster; a key turns the GIBS overlay on
+  gibsDate: string | null; // YYYY-MM-DD; null = newest (today minus the layer's lag); a 404 day steps back
+  /**
+   * M-GIBS: when given, the globe renders the layer toggles + 30-day slider
+   * (GibsControl) and reports changes here. Absent = read-only overlay.
+   */
+  onGibsChange?: (layer: GibsLayerKey | null, date: string | null) => void;
+  /** Continent name; places elsewhere are dimmed (S3-B). null/undefined = world. */
+  continent?: string | null;
 }
 
 const SRC_PLACES = "places";
@@ -66,9 +70,8 @@ const L_FIRE_GLOW = "fires-glow";
 const L_FIRE_DOT = "fires-dot";
 const L_GIBS = "gibs";
 
-const RADIUS: ExpressionSpecification = [
-  "interpolate", ["linear"], ["coalesce", ["feature-state", "v"], 0], 0, 3, 1, 11,
-];
+// radius in px is computed in colour.ts (rank breakpoints for risk, linear for trend)
+const RADIUS: ExpressionSpecification = ["coalesce", ["feature-state", "r"], 3];
 const SELECTED_RADIUS: ExpressionSpecification = ["*", 1.5, RADIUS];
 const NO_SELECTION: ExpressionSpecification = ["==", ["id"], -1];
 
@@ -111,18 +114,18 @@ function firesGeoJson(fires: FiresFile | null): GeoJSON.FeatureCollection {
   };
 }
 
-export function gibsDefaultDate(key: GibsLayerKey): string {
-  return new Date(Date.now() - GIBS_LAYERS[key].lagDays * 86_400_000).toISOString().slice(0, 10);
+function gibsTiles(key: GibsLayerKey, date: string): { tiles: string[]; maxzoom: number } {
+  return { tiles: [gibsTileUrl(key, date)], maxzoom: GIBS_LAYERS[key].level };
 }
 
-function gibsTiles(key: GibsLayerKey, date: string): { tiles: string[]; maxzoom: number } {
-  const l = GIBS_LAYERS[key];
-  return {
-    tiles: [
-      `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l.id}/default/${date}/GoogleMapsCompatible_Level${l.level}/{z}/{y}/{x}.${l.ext}`,
-    ],
-    maxzoom: l.level,
-  };
+/** Raster goes under every label: the first symbol layer of the basemap style. */
+function gibsBeforeId(map: MapLibreMap): string {
+  return (map.getStyle().layers ?? []).find((l) => l.type === "symbol")?.id ?? L_PLACES;
+}
+
+function removeGibs(map: MapLibreMap) {
+  if (map.getLayer(L_GIBS)) map.removeLayer(L_GIBS);
+  if (map.getSource(SRC_GIBS)) map.removeSource(SRC_GIBS);
 }
 
 /** Everything the map-side handlers need from the latest render. */
@@ -146,8 +149,11 @@ function valueText(l: Latest, i: number): string {
 export default function Globe(props: GlobeProps) {
   const {
     places, risk, trends, fires, mode, hazard, trendVar, selected, onSelect, flyTo, gibsLayer, gibsDate,
+    onGibsChange, continent = null,
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
+  // view state only (what the 404 fallback resolved to), never app state
+  const [gibsValid, setGibsValid] = useState<GibsValid | null>(null);
   const tipRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<MapState>({ map: null, ready: false, queue: [] });
   const latestRef = useRef<Latest | null>(null);
@@ -301,15 +307,15 @@ export default function Globe(props: GlobeProps) {
     });
   }, [places]);
 
-  // ---- colour + radius via feature state ----------------------------------
+  // ---- colour + radius via feature state (continent filter dims the rest) --
   useEffect(() => {
     runWhenReady(stateRef.current, (map) => {
-      const states = pointStates(colouring, places.length, risk, trends);
+      const states = pointStates(colouring, places.length, risk, trends, continentSet(places, continent));
       for (let i = 0; i < states.length; i++) {
         map.setFeatureState({ source: SRC_PLACES, id: i }, states[i]);
       }
     });
-  }, [places, risk, trends, colouring]);
+  }, [places, risk, trends, colouring, continent]);
 
   // ---- selected ring ------------------------------------------------------
   useEffect(() => {
@@ -338,19 +344,34 @@ export default function Globe(props: GlobeProps) {
     });
   }, [flyTo]);
 
-  // ---- GIBS raster overlay ------------------------------------------------
+  // ---- GIBS raster overlay (PRD M1) ---------------------------------------
+  // Resolve the day first (a 404 day steps back, ./gibs), then swap the
+  // raster source; the previous image stays up while the probe runs.
   useEffect(() => {
-    runWhenReady(stateRef.current, (map) => {
-      if (map.getLayer(L_GIBS)) map.removeLayer(L_GIBS);
-      if (map.getSource(SRC_GIBS)) map.removeSource(SRC_GIBS);
-      if (!gibsLayer) return;
-      const { tiles, maxzoom } = gibsTiles(gibsLayer, gibsDate ?? gibsDefaultDate(gibsLayer));
-      map.addSource(SRC_GIBS, { type: "raster", tiles, tileSize: 256, maxzoom, attribution: "NASA GIBS" });
-      map.addLayer(
-        { id: L_GIBS, type: "raster", source: SRC_GIBS, paint: { "raster-opacity": 0.55 } },
-        L_PLACES,
-      );
+    if (!gibsLayer) {
+      // gibsValid is left as is: every reader checks its key/requested against the props
+      runWhenReady(stateRef.current, removeGibs);
+      return;
+    }
+    let cancelled = false;
+    const key = gibsLayer;
+    const requested = clampGibsDate(key, gibsDate);
+    resolveGibsDate(key, requested).then((res) => {
+      if (cancelled) return;
+      setGibsValid(res);
+      runWhenReady(stateRef.current, (map) => {
+        if (cancelled) return;
+        removeGibs(map);
+        if (!res.valid) return;
+        const { tiles, maxzoom } = gibsTiles(key, res.valid);
+        map.addSource(SRC_GIBS, { type: "raster", tiles, tileSize: 256, maxzoom, attribution: "NASA GIBS" });
+        map.addLayer(
+          { id: L_GIBS, type: "raster", source: SRC_GIBS, paint: { "raster-opacity": 0.55 } },
+          gibsBeforeId(map),
+        );
+      });
     });
+    return () => { cancelled = true; };
   }, [gibsLayer, gibsDate]);
 
   return (
@@ -362,7 +383,8 @@ export default function Globe(props: GlobeProps) {
         className="pointer-events-none absolute z-10 rounded-lg border border-white/10 bg-black/80 px-2.5 py-1.5 text-[11px] leading-snug backdrop-blur"
         style={{ display: "none" }}
       />
-      <Legend colouring={colouring} />
+      <Legend colouring={colouring} gibs={gibsLayer && gibsValid?.key === gibsLayer ? gibsValid : null} />
+      {onGibsChange && <GibsControl layer={gibsLayer} date={gibsDate} valid={gibsValid} onChange={onGibsChange} />}
     </div>
   );
 }

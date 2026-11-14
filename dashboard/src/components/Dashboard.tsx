@@ -5,13 +5,16 @@
 // thing that scrolls. Globe is S3's; everything in the aside is S4's.
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { loadAll } from "@/lib/data";
+import { FILE_COUNT, loadAll } from "@/lib/data";
 import { HAZARD_LABEL, VARIABLE_LABEL, ageHours, fmtAge, fmtCount, fmtUtc } from "@/lib/format";
 import { P } from "@/lib/palette";
 import { HAZARDS, VARIABLES, type Data, type Hazard, type Mode, type Variable } from "@/lib/types";
 import type { FlyTarget, GibsLayerKey } from "./globe/Globe";
 import { GIBS_LAYERS } from "./globe/Globe";
+import Feed from "./panels/Feed";
+import Search from "./globe/Search";
 import Freshness, { useNow } from "./panels/Freshness";
+import Honesty from "./panels/Honesty";
 import HazardsTable from "./panels/HazardsTable";
 import Kpis from "./panels/Kpis";
 import PlacePanel from "./panels/PlacePanel";
@@ -53,11 +56,12 @@ function initialState(): AppState {
 export default function Dashboard() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<[number, number]>([0, FILE_COUNT]);
   const [s, setS] = useState<AppState>(initialState);
   const now = useNow();
 
   useEffect(() => {
-    loadAll().then(setData, (e: unknown) => setError(String(e)));
+    loadAll((done, total) => setProgress([done, total])).then(setData, (e: unknown) => setError(String(e)));
   }, []);
 
   const places = useMemo(() => data?.places.places ?? [], [data]);
@@ -78,6 +82,17 @@ export default function Dashboard() {
       ...prev,
       selected: i,
       flyTo: fly && i != null && places[i] ? { lon: places[i].lon, lat: places[i].lat } : prev.flyTo,
+    }));
+  }, [places]);
+
+  /** An alert picks its place and its hazard, and flies the globe (DESIGN §4). */
+  const pickAlert = useCallback((i: number, hazard: Hazard) => {
+    setS((prev) => ({
+      ...prev,
+      hazard,
+      mode: "next14",
+      selected: i,
+      flyTo: places[i] ? { lon: places[i].lon, lat: places[i].lat } : prev.flyTo,
     }));
   }, [places]);
 
@@ -131,6 +146,8 @@ export default function Dashboard() {
           flyTo={s.flyTo}
           gibsLayer={s.gibsLayer}
           gibsDate={s.gibsDate}
+          onGibsChange={(gibsLayer, gibsDate) => setS((p) => ({ ...p, gibsLayer, gibsDate }))}
+          continent={s.continent}
         />
 
         {/* title block, DESIGN §3 */}
@@ -151,12 +168,15 @@ export default function Dashboard() {
               title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)}` : undefined}
             >
               <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
-              {data ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}` : "connecting"}
+              {data
+                ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}`
+                : error ? "failed" : `loading ${progress[0]} of ${progress[1]} files`}
             </div>
           </div>
 
-          {/* controls, PRD §5: mode · hazard · trend variable · continent (search is S3-B) */}
+          {/* controls, PRD §5: search (S3-B) · mode · hazard · trend variable · continent; imagery toggles + slider sit on the globe (M-GIBS) */}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/55 px-2.5 py-1.5 backdrop-blur">
+            <Search places={places} onPick={(i) => select(i, true)} />
             <Toggle
               value={s.mode}
               options={[["now", "Now"], ["next14", "Next 14 days"]]}
@@ -180,12 +200,6 @@ export default function Dashboard() {
               options={[["world", "world"], ...continents.map((c): [string, string] => [c, c])]}
               onChange={(v) => setS((p) => ({ ...p, continent: v === "world" ? null : v }))}
             />
-            <Select
-              label="imagery"
-              value={s.gibsLayer ?? "none"}
-              options={[["none", "none"], ...(Object.keys(GIBS_LAYERS) as GibsLayerKey[]).map((k): [string, string] => [k, GIBS_LAYERS[k].label])]}
-              onChange={(v) => setS((p) => ({ ...p, gibsLayer: v === "none" ? null : (v as GibsLayerKey) }))}
-            />
           </div>
         </div>
       </section>
@@ -193,7 +207,17 @@ export default function Dashboard() {
       <aside className="sidebar-scroll flex w-[560px] shrink-0 flex-col gap-3 border-l border-border p-3">
         <Kpis data={data} filter={filter} />
         {s.mode === "now" ? (<>{trendsTable}{hazardsTable}</>) : (<>{hazardsTable}{trendsTable}</>)}
-        <PlacePanel data={data} selected={s.selected} trendVar={s.trendVar} onClear={() => select(null)} />
+        <PlacePanel
+          data={data}
+          selected={s.selected}
+          trendVar={s.trendVar}
+          hazard={s.hazard}
+          onTrendVar={(trendVar) => setS((p) => ({ ...p, trendVar }))}
+          onHazard={(hazard) => setS((p) => ({ ...p, hazard }))}
+          onClear={() => select(null)}
+        />
+        <Feed feed={data?.feed ?? null} places={places} selected={s.selected} hazard={s.hazard} filter={filter} onPick={pickAlert} />
+        <Honesty honesty={data?.honesty ?? null} />
         <Freshness freshness={data?.freshness ?? null} run={data?.run ?? null} />
         <Sources freshness={data?.freshness ?? null} trends={data?.trends ?? null} risk={data?.risk ?? null} />
         <footer className="px-1 pb-1 text-[10px] leading-snug text-muted">

@@ -2,7 +2,9 @@
 // Shared chrome for the sidebar panels: Card, headings, chips, status dots,
 // sortable table header. Tokens from DESIGN.md §2 only.
 import type { ReactNode } from "react";
+import { CATEGORY_V, riskColour } from "@/components/charts/ramp";
 import { P } from "@/lib/palette";
+import type { Category } from "@/lib/types";
 
 export function Card({ title, caption, children, className = "" }: {
   title?: ReactNode; caption?: ReactNode; children: ReactNode; className?: string;
@@ -23,6 +25,25 @@ export function Chip({ children, colour, title }: { children: ReactNode; colour?
       className="inline-block rounded bg-white/10 px-1 font-mono text-[9px] uppercase tracking-wide text-ink-2"
       style={colour ? { color: colour } : undefined}
     >
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Category chip: a dot in the same ramp colour as the globe point for that
+ * category (CATEGORY_V = the probability where the category starts; "low" is
+ * muted), with the label in ink so it stays legible at the dark end of the ramp.
+ */
+export function CategoryChip({ category, title, children }: { category: Category; title?: string; children?: ReactNode }) {
+  const colour = category === "low" ? P.muted : riskColour(CATEGORY_V[category]);
+  return (
+    <span
+      title={title}
+      className="inline-flex items-center gap-1 rounded bg-white/10 px-1 font-mono text-[9px] uppercase tracking-wide text-ink-2"
+    >
+      <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: colour, boxShadow: category === "extreme" ? `0 0 5px ${colour}` : undefined }} />
+      {category}
       {children}
     </span>
   );
