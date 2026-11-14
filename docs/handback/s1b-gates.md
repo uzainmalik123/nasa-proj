@@ -2,6 +2,37 @@
 
 Branch `s1-ingest`, merged with `origin/main` (S2-A/B, S3-B, S4-B) first. PR to main: https://github.com/uzainmalik123/nasa-proj/pull/9 (open, see "Not done").
 
+## GREEN RUN · 43604599930 (third dispatch, 19:23 PKT) · the handback proof
+
+- Actions run: https://github.com/uzainmalik123/nasa-proj/actions/runs/43604599930 · **success** · pipeline 10 min 32 s, push 14 s, G7 step passed first try, deploy triggered (run 43605565447, success)
+- Live `run.json`: https://raw.githubusercontent.com/uzainmalik123/nasa-proj/data/out/run.json?v=20261114T1423Z
+- Pages: https://uzainmalik123.github.io/nasa-proj/ · screenshot `docs/handback/s1b/pages-real-data-20261114T1423Z.png` (554 places on watch · LIVE · 6/6 gates pass · fires 24 h 35k in 7,385 bins · no console errors; all nine files fetched 200 with `?v=20261114T1423Z`)
+- Data branch: 950 files; `out/` now holds all nine files (places 82 KB, trends 2.7 MB, risk 2.2 MB, series 2.5 MB, fires_24h 171 KB, feed 33 KB, freshness, honesty, run) plus `cache/published/20261114T1423Z.parquet` (45 KB) and `cache/forecast/20261114T1423Z.parquet`.
+
+```
+run_id 20261114T1423Z · tier 1 · 554 places · started 14:23Z · finished 14:34Z · duration_s 629 · ok true · cold false
+G1_time       PASS  value=629.0  incremental run, limit 900 s
+G2_coverage   PASS  value=1.0  554/554 places complete · power 554 · forecast 554 (20261114T1423Z.parquet) · firms 554
+G3_freshness  PASS  value=1.09  firms 1.1 h (≤ 6 h) · power 3.0 d (≤ 4 d) · forecast 0.1 h (≤ 12 h)
+G4_sanity     PASS  value=0.3015  firms rows 41968 · wildfire p std 0.3015 · risks and trend p in [0, 1]
+G5_model      PASS  value=0.7909  PR-AUC 0.791 vs baseline 0.437 · Brier 0.1370 vs baseline 0.2131
+G6_output     PASS  value=2.725  8 files · largest 2.72 MB · first run
+G7_deploy     skip  value=None  checked by the workflow against the live run.json
+metrics  pr_auc 0.791 · baseline_pr_auc 0.437 · brier 0.137
+timings  ingest 553.7 · trend 17.9 · features 18.6 · hazards 37.8 · publish 1.0 (s)
+```
+
+Forecast this run (fresh incremental fetch, the 08:27 cache was 6 h old):
+
+```
+14:23:38 forecast: 554 places in 23 batches · past_days 2 · previous 20261114T0827Z.parquet
+14:30:27 forecast fill: 21 places had all-null days (21 rows); gfs_seamless filled 21, 0 left
+14:30:27 forecast done: 554 places ok, 0 failed, 59832 rows (49860 carried over) → 20261114T1423Z.parquet
+14:32:51 power done: 554 ok, 0 failed, 2198272 rows, newest 2026-11-11
+```
+
+The 23 forecast requests took ~7 min on the runner (0.8 s each from here), still hidden behind POWER's 554 s; worth a look if G1 ever gets tight.
+
 ## What works
 
 | Item | Where | Proof |
@@ -168,8 +199,8 @@ No Open-Meteo call (reused `20261114T0827Z.parquet`, 3.3 h old), 636 s end to en
 
 ## Not done
 
-- **Green CI run.** PR #9 was merged and dispatched (run 43587508015), which hit the Open-Meteo ban above and was cancelled. The quota fix is on `s1-ingest` and needs a second merge + dispatch; there is no green run, no nine-file data branch, no live G7 and no Pages screenshot yet.
-- The Pages dashboard keeps failing with `run.json: HTTP 404` until that first green run pushes the data branch.
+- Nothing from the brief. Three dispatches were needed (Open-Meteo per-IP ban, then the pre-fill cache failing G2) before the green run above; PRs #9, #10, #11 are all on main, so the 3-hourly cron now runs this code.
+- Open question for day 2: the forecast requests were ~18 s each on the runner this run versus 0.8 s from a home IP; if that is throttling, the per-IP budget is tighter than the ~2,900 calls/day computed here.
 
 ## Calls made
 
