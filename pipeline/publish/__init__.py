@@ -1,7 +1,8 @@
 """Stage ``publish``: write the science outputs per docs/contracts.md §3.
 
   places.json   from ``ctx["places"]`` (places.parquet order, the index every file shares)
-  risk.json     ``ctx["risk"]`` from the hazards stage
+  risk.json     ``ctx["risk"]`` from the hazards stage, plus ``movers`` and ``continents``
+                (publish/aggregate.py, derived from ``now`` and ``history``)
   series.json   ``ctx["series"]``
   feed.json     alerts (publish/feed.py), persisted across runs via the previous file
   honesty.json  mode "hindcast" from the held-out wildfire metrics + the run ledger
@@ -23,6 +24,7 @@ from pathlib import Path
 import numpy as np
 
 import config
+from publish import aggregate
 from publish.write_json import meta, write_json
 
 log = logging.getLogger("publish")
@@ -105,8 +107,9 @@ def run(ctx: dict) -> None:
     )
 
     # risk.json
-    risk = ctx["risk"]
+    risk = aggregate.attach(places, ctx["risk"])
     validate_risk(risk, n)
+    aggregate.validate(risk, n)
     write_json(
         "risk.json",
         {"meta": m, **risk},
