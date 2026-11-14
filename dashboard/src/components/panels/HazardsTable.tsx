@@ -46,7 +46,7 @@ export function fmtHeadline(h: Hazard, value: number | null): string {
   }
 }
 
-function fmtDelta(h: Hazard, d: number | null): string {
+export function fmtDelta(h: Hazard, d: number | null): string {
   if (d == null) return "–";
   switch (h) {
     case "wildfire":
