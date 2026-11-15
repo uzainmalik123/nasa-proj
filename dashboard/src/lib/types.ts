@@ -72,7 +72,7 @@ export interface RiskNow {
   heat: HeatNow;
   rain: RainNow;
 }
-export interface ShapDriver { feature: string; label: string; shap: number; value: number }
+export interface ShapDriver { feature: string; label: string; shap: number; value: number | null } // value null = no observation (KI-20)
 export interface ReasonDriver { reason: string }
 export interface Drivers {
   wildfire: ShapDriver[];
