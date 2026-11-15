@@ -22,7 +22,7 @@ Audience is unchanged from the PRD: a judge with four minutes, then disaster man
 **Non-goals**
 - A palette change. `lib/palette.ts`, `RISK_STOPS`, the series colour bindings (rain blue, fire orange, vegetation aqua, temperature yellow) and the category colours stay as DESIGN.md §2 says.
 - New data. Everything on screen reads the files contracts.md §3 already publishes.
-- Mobile. Minimum supported width 1280 px **(call)**; below that the left column collapses to a drawer is a Low item if time allows.
+- A mobile-first redesign. Mobile is in scope as its own package (§5.5, L8): the desktop layout holds down to 1024 px; under 768 px the phone layout applies; between the two the desktop layout with the column as a drawer **(call)**.
 - A separate landing or pitch page. That is a different piece of work.
 
 **Anti-goals**
@@ -151,6 +151,35 @@ What scrubbing does **(call)**:
 
 Every tile keeps the `title` tooltip text today's KPI tiles carry. The gauge row follows the region filter like the KPIs did.
 
+### 5.5 Mobile (under 768 px): "M4", approved 2026-11-15
+
+Decided from three phone mockups (bottom sheet with a tab bar, globe-on-top with a card carousel, left drawer) and then reshaped to the user's own idea: sections in a side drawer, the selected city's data rising from the bottom only when a city is tapped. The user's words: data at the bottom all the time is hard to look at, but when they tap a city we show the data somehow, and a layout shift is fine.
+
+Three states, one layout:
+
+```
+state 1 · idle              state 2 · city tapped          state 3 · ≡ tapped
+┌──────────────┐            ┌──────────────┐               ┌─────────┬────┐
+│ ≡ ● title ⌕ │            │ ≡ ● title ⌕ │               │ tabs    │    │
+│ [chips…]     │            │ [chips…]     │               │ Risk ▾  │    │
+│              │            │   globe ◎    │  globe slides │ table   │dim │
+│    globe     │            ├──────────────┤  up, city at  │ …       │glo │
+│   (heatmap)  │            │ Faisalabad 100% ✕          │ movers  │be  │
+│              │            │ [fire][drought][heat][rain]│ sources │    │
+│              │            │ fire-weather curve         │         │    │
+│ [▶ ─●─ today]│            │ drivers · drag up for more │         │    │
+└──────────────┘            │ [▶ ─●─ today]              └─────────┴────┘
+                            └──────────────┘
+```
+
+- **State 1.** Top bar as a glass pill: ≡ (drawer), orange dot, short title "Trend Detective", live dot, ⌕ (search). Under it a horizontally scrolling chip row with the same controls as the desktop top bar (mode, hazard, trend, region, imagery). The globe fills the rest. The bottom carries only the timeline as a one-line glass pill **(call: kept because the user asked earlier for the slider to stay visible)**. No gauges on mobile; their numbers are in the Sources tab and the Risk tab header.
+- **State 2.** Tapping a globe point, a search result or a drawer row: the stage shrinks to the top ~46 % of the screen, the globe flies so the city sits at the centre of the visible half, and a sheet rises to ~54 %. Sheet contents top to bottom: grab handle; place name, country, population, coordinates, with the active hazard's headline (17 px mono) and category chip at the right and ✕; the one-line driver sentence; four hazard cards in a row (hazard-coloured left border, 12 px mono value); the fire-weather forecast curve; the SHAP driver bars; the timeline docked into the sheet's bottom edge. Dragging the sheet up reveals the rest of today's `PlacePanel` (trend chart with variable chips, the three anomaly series, the sentence). ✕ or swipe-down returns to state 1 and clears the selection; the globe animates back to full height.
+- **State 3.** ≡ opens a drawer from the left at 74 % width over a 45 % scrim. It is the desktop column re-flowed: the tab strip (icon + label) with **five** tabs, Risk, Trends, Alerts, Regions, Sources; no Place tab, because the sheet is the place view **(call)**. Content is the same components as desktop in their column layout; the hazards table hides its sparkline and population columns under 400 px wide **(call)**, which is the only place the "whole data visible" rule bends, and those two values are in the sheet. The source-status strip is pinned at the drawer's bottom. Tapping a row closes the drawer, flies the globe and opens the sheet. Tapping the scrim or swiping left closes it.
+- Transitions: sheet and drawer 240 ms ease-out; the stage resize and the fly-to run together so the city lands centred as the sheet finishes **(call)**. Reduced-motion users get instant state changes.
+- URL state is identical to desktop; `tab=` maps to the drawer's tab and opens it on load only if the URL names one.
+- Touch targets ≥ 44 px on the tab strip, chips, ✕, play button and knob. The timeline knob gets a 28 px invisible hit area.
+- The heatmap (§6.1 band 1) is what makes state 1 worth looking at; mobile should ship after F1.
+
 ## 6. Colour usage cleanup (same palette, applied differently)
 
 Observed in the current build and to be fixed as part of this work:
@@ -217,7 +246,8 @@ This section is the tracker. The work is split across sessions; each session tak
 | F1 | Fire heatmap at world zoom with zoom crossfade and legend swap (§6.1 band 1) | S3 | – (ship first) | open |
 | F2 | `fires_points.json` from the pipeline, lazy load above zoom 4, real-position dots (§6.1 band 2) | S1 + S3 | F1 | open, only if time allows |
 | L7 | DESIGN.md §3 and §4 rewritten to match; KNOWN_ISSUES entries KI-14 / KI-15 re-checked against the new chrome; final walk proof | S4 | all above | open |
+| L8 | Mobile layout "M4" (§5.5): breakpoints, glass top bar + chip row, timeline pill, city sheet with stage resize and centred fly-to, sections drawer with five tabs, touch targets; proof screenshots at 390 × 844 for all three states | S3 + S4 | L1, L3, L5, F1 | open |
 
 Done before this document: KI-1 fire tooltip, legend row and √count radii (s3-globe, 2026-11-15).
 
-Not in scope here, tracked elsewhere: a landing or pitch page; mobile.
+Not in scope here, tracked elsewhere: a landing or pitch page.
