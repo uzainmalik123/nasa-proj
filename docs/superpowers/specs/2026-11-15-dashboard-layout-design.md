@@ -140,6 +140,15 @@ The globe fills the stage. `Globe.tsx` is unchanged except: the GIBS chip row an
 - Imagery stays in the top bar's select (§5.1); it is a choice of layer, not on/off.
 - On mobile (§5.5) the zoom buttons are omitted (pinch), the reset view and the two toggles join the chip row under the top bar as icon chips.
 
+**Place labels at close zoom.** When a user zooms to where only a handful of watched places are in frame, each dot gets its name beside it so they know which point is which, with no label ever overlapping another label or another dot.
+
+- A MapLibre `symbol` layer on the places source, `minzoom` 4.5 **(call: the zoom where neighbouring watch-list cities are ~40 px apart; tune by eye)**, `text-field` = place name, Geist 11 px, `ink-2`, 1 px `page`-coloured halo so it reads over the basemap; `text-anchor` left with an 8 px offset from the dot, `text-variable-anchor` [left, right, top, bottom] so a label tries the other three sides before giving up. Fade in with `text-opacity` from 0 at zoom 4.5 to 1 at 5 so labels do not pop.
+- **No overlap, by the renderer:** `text-allow-overlap` stays false and `text-ignore-placement` false, so MapLibre's collision index drops any label that would touch another label or dot. `symbol-sort-key` = the place's current headline value (risk p or trend magnitude, whichever colours the globe), so when two cities are too close the riskier one keeps its name. `text-optional` false so a place without room for its label still draws its dot (dots are on the circle layer, which never collides).
+- The **selected place** always keeps its label: a second symbol layer with `text-allow-overlap` true and the same style in `ink`, filtered to the selected id, drawn last. Hovered place likewise while hovered **(call)**.
+- Density guard: if more than ~12 labels would fit in the viewport the layer is still correct but noisy, so between zoom 4.5 and 6 only places with category ≥ elevated (or |trend| above the median) are labelled; above zoom 6 every place in frame is **(call)**.
+- The basemap's own city names (OpenFreeMap `place_*` labels, which DESIGN.md §4 keeps) are hidden from zoom 4.5 up so a watched city is never named twice, and the basemap keeps naming countries and non-watched cities for orientation **(call)**.
+- Labels are part of the places layer group, so the places toggle hides them too. In trend lens the label text is the same; the sort key follows the lens.
+
 **Hover tooltip** on points: unchanged.
 
 ### 5.4 Dock (bottom, glass, 14 px inset left/right/bottom)
@@ -258,7 +267,7 @@ This section is the tracker. The work is split across sessions; each session tak
 |---|---|---|---|---|
 | L1 | Left column with the five-tab strip; move the eleven sections into tabs; column footer with source dots; KPI tiles removed; column width measured and set (§5.2); `tab` in state and URL; `walk.mjs` rewritten; `lucide-react` added | S4 | – | open |
 | L2 | Top bar (§5.1): brand + source strip, controls moved up, imagery select back in the bar, live pill, UTC clock; title block and floating control panel removed from the globe | S4 | L1 | open |
-| L3 | Stage furniture (§5.3): legend to top-left, the full place panel floating top-right with globe padding on open/close, stage controls (zoom in / out / reset, fires and places toggles; closes KI-14 and KI-15), `GibsControl` removed from the globe | S3 + S4 | L2 | open |
+| L3 | Stage furniture (§5.3): legend to top-left, the full place panel floating top-right with globe padding on open/close, stage controls (zoom in / out / reset, fires and places toggles; closes KI-14 and KI-15), collision-free place labels at close zoom, `GibsControl` removed from the globe | S3 + S4 | L2 | open |
 | L4 | Dock gauges (§5.4 gauges table): ring component, six tiles, region filter, tooltips | S4 | L1 | open |
 | L5 | Dock timeline (§5.4 timeline): track, play, `day` in state and URL, globe recolour from `history` / `fwi_forecast`, GIBS date follows the day, `date=` folded into `day=` | S3 | L3, L4 | open |
 | L6 | Colour usage cleanup (§6 bullets): ramp-coloured bars, zero-delta chips muted, sparklines without fill, green only on live/gates/hit-rate, one glass recipe, captions to the Sources tab (§7) | S4 | L1 | open |
