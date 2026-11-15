@@ -342,6 +342,29 @@ export default function Dashboard() {
             />
           </div>
         </div>
+
+        {/* place panel (layout spec §5.3): the selected place's full panel floats over the globe,
+            top-right on desktop, a bottom sheet below lg; only while a place is selected */}
+        {s.selected != null && (
+          <div
+            className="place-float absolute inset-x-2 bottom-20 z-30 max-h-[58vh] overflow-y-auto rounded-[16px] shadow-[0_12px_40px_rgba(0,0,0,0.55)] lg:inset-x-auto lg:bottom-auto lg:right-4 lg:top-4 lg:max-h-[calc(100%-13.5rem)] lg:w-[440px]"
+            role="dialog"
+            aria-label="selected place"
+          >
+            <ErrorBoundary key={s.selected}>
+              <PlacePanel
+                data={data}
+                selected={s.selected}
+                trendVar={s.trendVar}
+                hazard={s.hazard}
+                mode={s.mode}
+                onTrendVar={(trendVar) => setS((p) => ({ ...p, trendVar, lens: "trend" }))}
+                onHazard={(hazard) => setS((p) => ({ ...p, hazard, lens: "hazard" }))}
+                onClear={() => select(null)}
+              />
+            </ErrorBoundary>
+          </div>
+        )}
       </section>
 
       <aside
@@ -351,18 +374,6 @@ export default function Dashboard() {
       >
         <Kpis data={data} filter={filter} />
         {s.mode === "now" ? (<>{trendsTable}{hazardsTable}</>) : (<>{hazardsTable}{trendsTable}</>)}
-        <ErrorBoundary key={s.selected ?? "none"}>
-          <PlacePanel
-            data={data}
-            selected={s.selected}
-            trendVar={s.trendVar}
-            hazard={s.hazard}
-            mode={s.mode}
-            onTrendVar={(trendVar) => setS((p) => ({ ...p, trendVar, lens: "trend" }))}
-            onHazard={(hazard) => setS((p) => ({ ...p, hazard, lens: "hazard" }))}
-            onClear={() => select(null)}
-          />
-        </ErrorBoundary>
         <Movers
           places={places}
           risk={data?.risk ?? null}

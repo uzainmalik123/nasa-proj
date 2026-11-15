@@ -34,8 +34,7 @@ export default function GibsControl({ layer, date, valid, onChange }: GibsContro
 
   return (
     <div
-      className="absolute bottom-3 z-10 rounded-2xl border border-white/10 bg-black/55 px-3 py-2 text-[10px] text-muted backdrop-blur"
-      style={{ left: "max(calc(50% - 20px), 510px)", transform: "translateX(-50%)", width: "min(480px, 62%)" }}
+      className="gibs-bar absolute z-10 rounded-2xl border border-white/10 bg-black/55 px-3 py-2 text-[10px] text-muted backdrop-blur"
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="uppercase tracking-[0.08em]">imagery</span>
