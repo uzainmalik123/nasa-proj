@@ -108,7 +108,7 @@ def test_green_run(world, monkeypatch):
 @pytest.mark.parametrize(
     "mutate, gate",
     [
-        (lambda c: c.update(started=c["started"] - timedelta(seconds=400)), "G1_time"),
+        (lambda c: c.update(started=c["started"] - timedelta(seconds=700)), "G1_time"),
         (lambda c: (c["cache"] / "power" / "a-aa.parquet").unlink(), "G2_coverage"),
         (lambda c: c["freshness"]["sources"][0].update(valid_for="2026-11-14T02:00Z"), "G3_freshness"),
         (lambda c: c["ingest"]["firms"]["live"].update(rows_24h=10), "G4_sanity"),
@@ -191,3 +191,13 @@ def test_g2_fails_on_null_day_inside_horizon(world, monkeypatch, offset):
     g = body["gates"]["G2_coverage"]
     assert g["pass"] is False and "forecast 2" in g["detail"], g
     assert body["failed_gate"] == "G2_coverage"
+
+
+def test_incremental_budget_fits_666_places(world, monkeypatch):
+    """A tier-due run with 666 places is ~800 s of POWER at one request per second
+    plus ~90 s of science; 1,000 s must still be green (G1 incremental = 20 min)."""
+    d, ctx = world
+    monkeypatch.setattr(gates, "_now", lambda: datetime(2026, 11, 14, 12, 10, tzinfo=UTC))
+    ctx["started"] -= timedelta(seconds=400)  # fixture run is 600 s; now 1,000 s
+    g = gates.run(ctx)["gates"]["G1_time"]
+    assert g["pass"] is True and "limit 1200 s" in g["detail"], g

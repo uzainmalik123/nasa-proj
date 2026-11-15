@@ -100,7 +100,10 @@ CATEGORY_THRESHOLDS = {
 }
 
 # ---- run gates (PRD §13.1) -------------------------------------------------
-G1_INCREMENTAL_MAX_S = 15 * 60
+# 15 min was set for 554 places; POWER is a global one-request-per-second pace
+# (KI-11), so a tier-due run with 666 places (PRD M9) is ~800 s before the
+# ~90 s of science. 20 min keeps ~400 s of headroom for POWER retries.
+G1_INCREMENTAL_MAX_S = 20 * 60
 G1_COLD_MAX_S = 60 * 60
 G2_MIN_COVERAGE = 0.98
 G3_FIRMS_MAX_AGE_H = 6
