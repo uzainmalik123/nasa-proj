@@ -6,7 +6,7 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 
 ## Open
 
-### KI-1 · Globe: the red-outlined dots with a white glow sit on a grid and ignore the mouse
+### ~~KI-1~~ · Globe: the red-outlined dots with a white glow sit on a grid and ignore the mouse · **fixed 15 Nov, see Fixed**
 - **Seen:** thousands of small dots with a white centre and red outline, visibly aligned to a grid; hovering does nothing, so they read as fake.
 - **Checked:** they are the FIRMS active-fire layer (`fires_24h.json`, legend "active fire detection (FIRMS)"): 35,033 VIIRS NOAA-21 detections from the last 24 h, real satellite data, published as **0.25° bins** (`[lon, lat, count, max_frp]`, centres on the grid, contracts §3), which is why they line up. The globe draws one glow + one dot per bin, radius by count (`globe/Globe.tsx` fire layers), but only the places layer has `mousemove` / `click` handlers; the fire layers have `count` and `frp` properties and no handler at all.
 - **Cause:** a deliberate aggregation (binning keeps the file at 170 KB instead of ~2 MB of raw points) with no tooltip and no legend text saying so.
@@ -118,6 +118,7 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 - **Fix sketch (S4 owns `Dashboard.tsx`, S3 for globe resize; medium):** below `lg` (1024 px) stack instead of split: root `flex-col` with the globe section `h-[60vh] min-h-[320px]` on top and the aside `w-full` below, scrolling the page rather than the aside (`overflow-y-auto` on the root, drop `sidebar-scroll` at that breakpoint). The controls row (NOW / NEXT 14 DAYS, hazard, trend, continent, imagery) wraps to two rows. Call `map.resize()` after the layout change so MapLibre fills the new box. The 560 px aside and 1.15 flex stay above `lg`. Cheaper interim: a "map / panels" tab bar at the top on small screens that shows one at a time, globe first.
 
 ## Fixed
+- 15 Nov · KI-1 (S3, `s3-globe`, `docs/handback/ki1-fires.md`): hovering a fire dot shows "N active fire detections · 0.25° cell / max FRP x MW · centre lat lon / observation · VIIRS NOAA-21 · newest <time> UTC"; the legend says "0.25° cells · 1 / 10 / 50 detections · hover for the count" with three sample dots and the source line; dot and glow radius grow with √count (1 → 2.7 px, 174 → 11.2 px at zoom ≥ 5, 0.75 of that at the global zoom). The grid look itself is still the 0.25° binning (contracts §3); finer bins or raw points above a zoom level stay an S1 decision.
 - 14 Nov · INTEGRATE d1: KI-7 step 1a (parallel fetch + progress pill), see above.
 - 14 Nov · Open-Meteo day 16 null over Europe (21 places): filled from `gfs_seamless` in the ingest; G2 requires 16 days.
 - 15 Nov · Open-Meteo day 16 null everywhere before ~06 UTC (run 43660446069, 00:53 UTC, G2 "forecast 0" for 554 places; `gfs_seamless` has no day 16 then either): G2 now requires today .. today + 14, the days the hazards read; day 16 only feeds the nullable `fwi_forecast`.

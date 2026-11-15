@@ -5,6 +5,8 @@ import {
   type Colouring,
 } from "./colour";
 import { GIBS_LAYERS, GIBS_MAX_STEP_BACK, type GibsValid } from "./gibs";
+import { FIRE_CELL_DEG, FIRE_FILL, FIRE_STROKE, fireDotRadius, fireSourceLabel, fmtAcq } from "./fires";
+import type { FiresFile } from "@/lib/types";
 
 const BAR_W = 176;
 
@@ -26,7 +28,9 @@ function pctLabel(v: number): string {
 
 const trendGradient = `linear-gradient(to right, ${P.s1} 0%, ${P.muted} 50%, ${P.s2} 100%)`;
 
-export default function Legend({ colouring, gibs = null }: { colouring: Colouring; gibs?: GibsValid | null }) {
+export default function Legend({
+  colouring, fires = null, gibs = null,
+}: { colouring: Colouring; fires?: FiresFile | null; gibs?: GibsValid | null }) {
   return (
     <div
       className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-[10px] text-muted backdrop-blur"
@@ -34,16 +38,42 @@ export default function Legend({ colouring, gibs = null }: { colouring: Colourin
     >
       {colouring.kind === "risk" ? <RiskLegend c={colouring} /> : <TrendLegend c={colouring} />}
       {gibs && <GibsRow g={gibs} />}
-      <div className="mt-2 flex items-center gap-2 border-t border-white/10 pt-2">
-        <span
-          className="inline-block h-2.5 w-2.5 rounded-full"
-          style={{
-            background: "#fff7ed",
-            boxShadow: `0 0 0 1.2px #d03b3b, 0 0 8px 3px rgba(255,247,237,0.35)`,
-          }}
-        />
-        <span>active fire detection (FIRMS)</span>
+      <FireRow fires={fires} />
+    </div>
+  );
+}
+
+const FIRE_SAMPLES = [1, 10, 50];
+
+/** KI-1: the dots are 0.25° cells, sized by count; say so and show the scale. */
+function FireRow({ fires }: { fires: FiresFile | null }) {
+  return (
+    <div className="mt-2 border-t border-white/10 pt-2">
+      <div className="flex items-center gap-2">
+        <span className="flex items-center gap-1.5">
+          {FIRE_SAMPLES.map((n) => (
+            <span
+              key={n}
+              className="inline-block rounded-full"
+              style={{
+                width: 2 * fireDotRadius(n),
+                height: 2 * fireDotRadius(n),
+                background: FIRE_FILL,
+                boxShadow: `0 0 0 1.2px ${FIRE_STROKE}, 0 0 8px 3px rgba(255,247,237,0.35)`,
+              }}
+            />
+          ))}
+        </span>
+        <span>active fire detections (FIRMS)</span>
       </div>
+      <div className="mt-0.5 text-muted">
+        {FIRE_CELL_DEG}° cells · {FIRE_SAMPLES.join(" / ")} detections · hover for the count
+      </div>
+      {fires && (
+        <div className="text-muted">
+          {fireSourceLabel(fires.source)} · last 24 h · newest {fmtAcq(fires.newest_acq)}
+        </div>
+      )}
     </div>
   );
 }
