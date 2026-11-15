@@ -210,7 +210,9 @@ State on 2026-11-15 (s3-globe, KI-1 done): the fire cells have a hover tooltip (
 
 ## 7. Type and density
 
-- Column text sizes stay as DESIGN.md §2: 11 px table rows, 10 px captions, 9 px chips.
+**What is settled and what is not.** The layout in §5 (frame, column, tabs, stage furniture, dock, mobile states) is approved and should be built as written; a package session may propose a revision but writes it here first. The visual finish is **not** settled: typeface, type sizes, weights, the glass recipe, gradients, ring and gauge styling, radii and shadows are provisional. The mockups used Geist and a quick glass look as placeholders. The user will judge the finish by looking at the built screens, so each package ships its first pass, takes screenshots, and expects a round of "change the font / drop that gradient" before its PR closes. DESIGN.md §2's tokens are the starting point, not a constraint on that round.
+
+- Column text sizes start as DESIGN.md §2: 11 px table rows, 10 px captions, 9 px chips.
 - Every card keeps one caption line, but captions that explain method (the ramp percentiles, the hit-rate definition) move from under each table to the Sources tab, leaving the Risk tab with the table, its one-line question heading and the movers **(call)**. The `title` tooltips keep the long explanations where they were.
 
 ## 8. Motion
