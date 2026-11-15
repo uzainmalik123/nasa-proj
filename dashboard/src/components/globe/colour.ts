@@ -7,7 +7,7 @@ import type { Category, Hazard, Mode, RiskNow, TrendsFile, Variable } from "@/li
 
 /** What drives colour and radius right now. Derived from props only. */
 export type Colouring =
-  | { kind: "risk"; hazard: Hazard; continuous: boolean; validFrom?: string; validTo?: string }
+  | { kind: "risk"; hazard: Hazard; mode: Mode; continuous: boolean; validFrom?: string; validTo?: string }
   | { kind: "trend"; variable: Variable; unit: string; scale: number; window: string };
 
 /** Per-feature state pushed to MapLibre: magnitude 0..1, radius px, colour, opacity. */
@@ -111,10 +111,14 @@ export function trendColour(t: number): string {
   return t < 0 ? toBlue(m) : toOrange(m);
 }
 
-/** 0..1 magnitude for a hazard: probability for p-hazards, category rank otherwise. */
-export function hazardMagnitude(h: Hazard, r: RiskNow): number {
+/**
+ * 0..1 magnitude for a hazard. `continuous` = the forecast probability for the
+ * p-hazards (mode "next14"); otherwise the stop where the current category
+ * starts (mode "now", and drought / heat in either mode: they publish no p).
+ */
+export function hazardMagnitude(h: Hazard, r: RiskNow, continuous = true): number {
   const row = r[h];
-  if ("p" in row && typeof row.p === "number") return Math.max(0, Math.min(1, row.p));
+  if (continuous && "p" in row && typeof row.p === "number") return Math.max(0, Math.min(1, row.p));
   return CATEGORY_V[row.category] ?? 0;
 }
 
@@ -164,7 +168,13 @@ export function trendText(trends: TrendsFile, i: number, vi: number): string {
   return `${signed(s, slopeDigits(s))} ${unit} · p=${p.toFixed(2)} · ${label}`;
 }
 
-/** Choose the colouring from props. "now" shows the trend, "next14" the hazard. */
+/**
+ * Choose the colouring from props. A trend variable (the parent's "globe =
+ * trend" lens, M-MODE+URL) colours by its 10-year slope; otherwise the hazard
+ * colours the globe, as its current category in mode "now" and as the
+ * forecast probability in mode "next14" (category for drought / heat, which
+ * publish no probability).
+ */
 export function pickColouring(
   mode: Mode,
   hazard: Hazard,
@@ -172,7 +182,7 @@ export function pickColouring(
   trends: TrendsFile | null,
   risk: { valid_from: string; valid_to: string } | null,
 ): Colouring {
-  if (mode === "now" && trendVar && trends) {
+  if (trendVar && trends) {
     const vi = trends.variables.indexOf(trendVar);
     if (vi >= 0) {
       return {
@@ -187,7 +197,8 @@ export function pickColouring(
   return {
     kind: "risk",
     hazard,
-    continuous: CONTINUOUS_HAZARD[hazard],
+    mode,
+    continuous: mode === "next14" && CONTINUOUS_HAZARD[hazard],
     validFrom: risk?.valid_from,
     validTo: risk?.valid_to,
   };
@@ -217,7 +228,7 @@ export function pointStates(
       if (skip(i)) { out[i] = off; continue; }
       const r = risk?.now[i];
       if (!r) { out[i] = dim; continue; }
-      const v = hazardMagnitude(c.hazard, r);
+      const v = hazardMagnitude(c.hazard, r, c.continuous);
       out[i] = v < RISK_FLOOR ? dim : { v, r: riskRadius(v), color: riskColour(v), o: 1, sig: true };
     }
     return out;
