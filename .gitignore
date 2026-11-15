@@ -36,3 +36,4 @@ dashboard/public/data/*.json
 # ---- misc ----
 .DS_Store
 *.log
+.superpowers/
