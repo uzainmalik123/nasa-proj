@@ -12,8 +12,8 @@
 // chosen trend variable. The URL mirrors the state (readUrl / writeUrl) with
 // replaceState, so any view is a shareable link.
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { FILE_COUNT, loadAll } from "@/lib/data";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FILE_COUNT, PROBE_MS, loadData, probeAndRefresh, type DataSource, type LoadHandlers, type ProbeState } from "@/lib/data";
 import { HAZARD_LABEL, VARIABLE_LABEL, ageHours, fmtAge, fmtCount, fmtUtc } from "@/lib/format";
 import { P } from "@/lib/palette";
 import { HAZARDS, VARIABLES, type Data, type Hazard, type Mode, type Variable } from "@/lib/types";
@@ -126,15 +126,46 @@ export default function Dashboard() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<[number, number]>([0, FILE_COUNT]);
+  // KI-7 step 1c: where the data on screen came from and what the run probe is doing (view state, for the pill)
+  const [source, setSource] = useState<DataSource | null>(null);
+  const [probe, setProbe] = useState<ProbeState>("checking");
   const [s, setS] = useState<AppState>(readUrl);
   const now = useNow();
+  const dataRef = useRef<Data | null>(null);
 
   useEffect(() => {
-    loadAll((done, total) => setProgress([done, total])).then((d) => {
-      setData(d);
-      // ?place=<id> from the URL: resolve now that places.json is in, and land on it (a shared link is an explicit pick).
-      setS((prev) => resolvePendingPlace(prev, d.places.places));
-    }, (e: unknown) => setError(String(e)));
+    const handlers: LoadHandlers = {
+      onProgress: (done, total) => setProgress([done, total]),
+      onData: (d, src) => {
+        const prevPlaces = dataRef.current?.places.places;
+        dataRef.current = d;
+        setSource(src);
+        setData(d);
+        setS((prev) => {
+          // a newer run may list places in another order: carry the selection over by id, drop it if gone
+          if (prevPlaces && prev.selected != null) {
+            const id = prevPlaces[prev.selected]?.id;
+            const i = d.places.places.findIndex((p) => p.id === id);
+            return { ...prev, selected: i >= 0 ? i : null };
+          }
+          // ?place=<id> from the URL: resolve now that places.json is in, and land on it (a shared link is an explicit pick).
+          return resolvePendingPlace(prev, d.places.places);
+        });
+      },
+      onProbe: setProbe,
+    };
+    loadData(handlers).catch((e: unknown) => setError(String(e)));
+    // An open tab re-probes every PROBE_MS while visible (one ~1 KB request), and when it comes back after that long.
+    let last = Date.now();
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      last = Date.now();
+      probeAndRefresh(dataRef.current?.run.run_id ?? null, handlers, dataRef.current != null).catch(() => setProbe("offline"));
+    };
+    const timer = setInterval(tick, PROBE_MS);
+    const onVisible = () => { if (document.visibilityState === "visible" && Date.now() - last >= PROBE_MS) tick(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
   }, []);
 
   const places = useMemo(() => data?.places.places ?? [], [data]);
@@ -186,7 +217,8 @@ export default function Dashboard() {
 
   const age = ageHours(data?.run.finished ?? data?.run.started, now);
   const live = age != null && age <= 6;
-  const pillColour = data ? (live ? P.good : P.warning) : P.muted;
+  const pillColour = data ? (live && probe !== "offline" ? P.good : P.warning) : P.muted;
+  const pillNote = probe === "checking" ? " · checking for a newer run" : probe === "offline" ? " · offline, showing the cached run" : "";
 
   const trendsTable = (
     <TrendsTable
@@ -245,11 +277,11 @@ export default function Dashboard() {
             <div
               className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide"
               style={{ borderColor: pillColour, color: pillColour, background: `${pillColour}1f` }}
-              title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)}` : undefined}
+              title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)} · from ${source === "cache" ? "the browser cache" : "the network"}` : undefined}
             >
               <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
               {data
-                ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}`
+                ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}${pillNote}`
                 : error ? "failed" : `loading ${progress[0]} of ${progress[1]} files`}
             </div>
           </div>

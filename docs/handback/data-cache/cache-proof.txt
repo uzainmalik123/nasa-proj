@@ -1,0 +1,40 @@
+
+[first visit] 1448 ms to first content · 10 data requests: run, places, trends, risk, feed, fires_24h, series, freshness, run, honesty
+  pill: live · updated 1h ago
+  title: run 20261115T0417Z · finished 2026-11-15 04:30 UTC · from the network
+ok   first visit fetches the probe and the nine files
+ok   first visit shows the live run from the network
+
+[reload] 1064 ms to first content · 1 data requests: run
+  pill: live · updated 1h ago
+  title: run 20261115T0417Z · finished 2026-11-15 04:30 UTC · from the browser cache
+ok   a reload fetches only run.json
+ok   a reload shows the cached run
+ok   cached first content (1064 ms) is faster than the first visit (1448 ms)
+
+[half-published run] 1185 ms to first content · 10 data requests: run, places, trends, risk, series, fires_24h, freshness, feed, honesty, run
+  pill: live · updated 1h ago
+  title: run 20261115T0417Z · finished 2026-11-15 04:30 UTC · from the browser cache
+ok   a changed run id triggers the full fetch
+ok   a set whose files disagree does not replace the cached run
+
+[new run published] 1165 ms to first content · 10 data requests: run, trends, places, risk, series, fires_24h, feed, freshness, honesty, run
+  pill: live · updated 1h ago
+  title: run 20261115T2359Z · finished 2026-11-15 04:30 UTC · from the network
+ok   the new run is fetched in full
+ok   the new run 20261115T2359Z is on screen
+
+[reload after the new run] 1069 ms to first content · 1 data requests: run
+  pill: live · updated 1h ago
+  title: run 20261115T2359Z · finished 2026-11-15 04:30 UTC · from the browser cache
+ok   the new run is served from the cache on the next reload
+
+[probe fails] 1076 ms to first content · 1 data requests: run
+  pill: live · updated 1h ago · offline, showing the cached run
+  title: run 20261115T2359Z · finished 2026-11-15 04:30 UTC · from the browser cache
+ok   a failed probe keeps the cached run and says offline
+
+page errors: 0 []
+ok   no page errors
+
+all checks passed
