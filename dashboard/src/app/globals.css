@@ -53,10 +53,9 @@ html, body {
    pushed it off small screens; at lg it keeps the original bottom-centre placement */
 .gibs-bar { left: 8px; right: 8px; bottom: 76px; }
 @media (min-width: 1024px) {
-  /* desktop: the layer is picked in the top bar; the bar (date slider) shows only while a layer is on,
-     bottom-right beside the zoom buttons so it never covers the legend bottom-left */
+  /* desktop: always shown bottom-right beside the zoom buttons (pick a layer here or in the top bar;
+     none clears it), so it never covers the legend bottom-left */
   .gibs-bar { left: auto; right: 64px; bottom: 12px; transform: none; width: min(460px, calc(100% - 340px)); }
-  .gibs-bar[data-on="0"] { display: none; }
 }
 
 /* globe legend (Legend.tsx, bottom-3 left-3): below lg lift it above the imagery bar and the
