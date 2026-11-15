@@ -1,10 +1,10 @@
-# Earth System Trend Detective
+# Global Alert
 
 **Detect the trend. Predict the hazard. Explain both.**
 
-NASA Space Apps 2026 · challenge "Be an Earth System Trend Detective".
+NASA Space Apps 2026 · built for the challenge "Be an Earth System Trend Detective".
 
-A live globe that watches 666 places: 554 capitals and large cities on every continent, plus 112 districts of Pakistan. For each it asks NASA's record two questions. First, what is changing here, and how fast? Every place gets a 10-year and a 90-day trend for rainfall, temperature, humidity, wind, soil wetness and fires, each a slope in real units with a significance test. Second, so what happens in the next 14 days? Four hazard modules turn those trends and the weather forecast into wildfire, drought, heat and heavy-rain risk. Probability, severity, exposure and confidence are shown side by side and never merged into one score. A pipeline rebuilds everything every three hours and publishes only if seven automatic checks pass. There is no server, no paid service, and no human in the loop.
+**Global Alert** is a live globe that watches 666 places: 554 capitals and large cities on every continent, plus 112 districts of Pakistan. For each it asks NASA's record two questions. First, what is changing here, and how fast? Every place gets a 10-year and a 90-day trend for rainfall, temperature, humidity, wind, soil wetness and fires, each a slope in real units with a significance test. Second, so what happens in the next 14 days? Four hazard modules turn those trends and the weather forecast into wildfire, drought, heat and heavy-rain risk. Probability, severity, exposure and confidence are shown side by side and never merged into one score. A pipeline rebuilds everything every three hours and publishes only if seven automatic checks pass. There is no server, no paid service, and no human in the loop.
 
 **Live:** **https://globalalert.earth** · try `?place=lahore-pk`, or type your own city in the search box.
 
@@ -92,7 +92,7 @@ A row of dots shows the last ten runs and their durations.
 
 ## Safety statement
 
-Earth System Trend Detective is an informational and research tool. It is **not an official warning service**. Its risk assessments are statistical estimates and can be wrong. In an emergency, follow your national meteorological service and local authorities.
+Global Alert is an informational and research tool. It is **not an official warning service**. Its risk assessments are statistical estimates and can be wrong. In an emergency, follow your national meteorological service and local authorities.
 
 ## Run it from a clean clone
 
