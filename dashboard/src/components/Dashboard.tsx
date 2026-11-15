@@ -365,7 +365,7 @@ export default function Dashboard() {
           </div>
 
           {/* controls, PRD §5: search (S3-B) · mode · hazard · trend variable · continent; imagery toggles + slider sit on the globe (M-GIBS) */}
-          <div className="mobile-controls flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-white/10 bg-black/65 px-2.5 py-1.5 backdrop-blur">
+          <div className="mobile-controls flex max-w-full flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border border-white/10 bg-black/65 px-2.5 py-1.5 backdrop-blur">
             <Search places={places} onPick={(i) => select(i, true)} />
             <Toggle
               label="mode"

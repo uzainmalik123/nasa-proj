@@ -123,3 +123,18 @@ html, body {
 @media (max-width: 1439.98px) { .topbar-controls select { max-width: 92px !important; } .topbar-controls input { width: 84px !important; } .topbar-controls { gap: 4px; } }
 @media (max-width: 1279.98px) { .topbar-controls select { max-width: 92px !important; } .topbar-controls input { width: 80px !important; } }
 @media (max-width: 1199.98px) { .topbar-controls select { max-width: 84px !important; } }
+
+/* phones: controls wrap again (no off-screen row); imagery bar one line without the
+   "NASA GIBS" tail; legend sits clear above the bar */
+@media (max-width: 1023.98px) {
+  .mobile-controls input { width: 104px; }
+  .mobile-controls select { max-width: 112px; }
+  .gibs-bar .ml-auto { display: none; }
+  .gibs-bar { padding: 6px 10px; }
+  .gibs-bar button { padding-left: 8px; padding-right: 8px; }
+  section .pointer-events-none.absolute.bottom-3.left-3.rounded-xl { bottom: 128px !important; }
+}
+@media (max-width: 399.98px) {
+  .gibs-bar > div:first-child > span:first-child { display: none; }
+  section .pointer-events-none.absolute.bottom-3.left-3.rounded-xl { transform: scale(0.8) !important; }
+}
