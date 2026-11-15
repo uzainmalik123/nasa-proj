@@ -12,9 +12,9 @@ export function Card({ title, caption, children, className = "" }: {
 }) {
   return (
     <section className={`rounded-[14px] border border-border bg-surface px-4 py-3.5 ${className}`}>
-      {title && <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{title}</h2>}
+      {title && <h2 className="mb-2.5 text-[11px] font-semibold uppercase leading-[1.35] tracking-[0.06em] text-ink-2 [text-wrap:balance]">{title}</h2>}
       {children}
-      {caption && <div className="mt-2 text-[10px] leading-snug text-muted">{caption}</div>}
+      {caption && <div className="mt-2.5 text-[11px] leading-[1.45] text-muted [text-wrap:pretty]">{caption}</div>}
     </section>
   );
 }
@@ -23,7 +23,7 @@ export function Chip({ children, colour, title }: { children: ReactNode; colour?
   return (
     <span
       title={title}
-      className="inline-block rounded bg-white/10 px-1 font-mono text-[9px] uppercase tracking-wide text-ink-2"
+      className="inline-block rounded bg-white/10 px-1 font-mono text-[10px] uppercase tracking-[0.04em] text-ink-2"
       style={colour ? { color: colour } : undefined}
     >
       {children}
@@ -41,7 +41,7 @@ export function CategoryChip({ category, title, children }: { category: Category
   return (
     <span
       title={title}
-      className="inline-flex items-center gap-1 rounded bg-white/10 px-1 font-mono text-[9px] uppercase tracking-wide text-ink-2"
+      className="inline-flex items-center gap-1 rounded bg-white/10 px-1 font-mono text-[10px] uppercase tracking-[0.04em] text-ink-2"
     >
       <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: colour, boxShadow: category === "extreme" ? `0 0 5px ${colour}` : undefined }} />
       {category}

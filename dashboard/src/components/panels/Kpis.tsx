@@ -10,11 +10,11 @@ function Tile({ label, value, sub, good, title }: {
   label: string; value: string; sub: string; good?: boolean; title?: string;
 }) {
   return (
-    <div className="rounded-[14px] border border-border bg-surface px-3 py-3.5" title={title}>
-      <div className="whitespace-nowrap text-[10px] uppercase tracking-wide text-muted">{label}</div>
-      <div className="mt-0.5 font-mono text-[22px] font-semibold leading-none text-ink">{value}</div>
+    <div className="rounded-[14px] border border-border bg-surface px-3 py-3" title={title}>
+      <div className="whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.04em] text-muted">{label}</div>
+      <div className="mt-1.5 font-mono text-[24px] font-semibold leading-none tracking-[-0.01em] tabular-nums text-ink">{value}</div>
       {/* two lines reserved, so the tile is its loaded height while loading (DESIGN §8) */}
-      <div className="mt-1 min-h-[2.75em] text-[10.5px] leading-snug" style={{ color: good ? P.good : P.muted }}>{sub}</div>
+      <div className="mt-1.5 min-h-[2.8em] text-[11px] leading-[1.4] [text-wrap:pretty]" style={{ color: good ? P.good : P.muted }}>{sub}</div>
     </div>
   );
 }
@@ -57,7 +57,7 @@ export default function Kpis({ data, filter }: { data: Data | null; filter: Set<
             <Tile key={l} label={l} value="–" sub="loading…" />
           ))}
         </div>
-        <div className="mt-1.5 px-1 text-[10px] leading-snug text-muted">&nbsp;</div>
+        <div className="mt-1.5 px-1 text-[10.5px] leading-[1.4] text-muted tabular-nums [text-wrap:pretty]">&nbsp;</div>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export default function Kpis({ data, filter }: { data: Data | null; filter: Set<
       />
     </div>
       {/* PRD §7.4: valid and retrieved time for the row, one line */}
-      <div className="mt-1.5 truncate px-1 text-[10px] leading-snug text-muted" title={`run ${k.run.run_id}`}>
+      <div className="mt-1.5 truncate px-1 text-[10.5px] leading-[1.4] text-muted tabular-nums [text-wrap:pretty]" title={`run ${k.run.run_id}`}>
         valid: fires to {short(data!.fires.newest_acq)} · rain trend to {fmtMonth(data!.trends.months[data!.trends.months.length - 1] ?? "")}
         {" · "}hit rate {fmtDay(data!.honesty.window[0])} → {fmtDay(data!.honesty.window[1])}
         {" · "}retrieved {short(k.run.finished)} UTC
