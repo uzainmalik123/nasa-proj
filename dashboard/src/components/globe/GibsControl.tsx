@@ -35,11 +35,11 @@ export default function GibsControl({ layer, date, valid, onChange }: GibsContro
   return (
     <div
       data-on={layer ? "1" : "0"}
-      className="gibs-bar absolute z-10 rounded-2xl border border-white/10 bg-black/55 px-3 py-2 text-[10px] text-muted backdrop-blur"
+      className="gibs-bar absolute z-10 rounded-xl border border-white/10 bg-black/70 px-3 py-2.5 text-[11px] leading-[1.4] text-muted backdrop-blur"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="uppercase tracking-[0.08em]">imagery</span>
-        <div className="flex overflow-hidden rounded border border-white/15" role="group" aria-label="NASA GIBS imagery layer">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span className="font-semibold uppercase tracking-[0.06em] text-ink">Imagery</span>
+        <div className="flex overflow-hidden rounded-lg border border-white/15" role="group" aria-label="NASA GIBS imagery layer">
           {keys.map((k) => {
             const on = k === layer;
             const m = GIBS_LAYERS[k];
@@ -50,7 +50,7 @@ export default function GibsControl({ layer, date, valid, onChange }: GibsContro
                 aria-pressed={on}
                 title={m.label}
                 onClick={() => pick(k)}
-                className={`flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-wide transition ${
+                className={`flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1 text-[11px] transition ${
                   on ? "bg-white/10 text-ink" : "text-muted hover:text-ink"
                 }`}
               >
@@ -63,12 +63,12 @@ export default function GibsControl({ layer, date, valid, onChange }: GibsContro
             );
           })}
         </div>
-        {layer == null && <span className="ml-auto">NASA GIBS · last {GIBS_SLIDER_DAYS} days</span>}
+        {layer == null && <span className="ml-auto whitespace-nowrap">NASA GIBS</span>}
       </div>
 
       {meta && layer && range && shown && (
         <>
-          <div className="mt-1.5 flex items-center gap-2.5">
+          <div className="mt-2 flex items-center gap-2.5 tabular-nums">
             <span className="font-mono">{range.min.slice(5)}</span>
             <input
               type="range"
@@ -83,7 +83,7 @@ export default function GibsControl({ layer, date, valid, onChange }: GibsContro
               style={{ accentColor: meta.colour }}
             />
             <span className="font-mono">{range.max.slice(5)}</span>
-            <span className="font-mono text-[12px] text-ink">{shown}</span>
+            <span className="font-mono text-[12px] font-medium text-ink">{shown}</span>
           </div>
           <div className="mt-1 text-muted">
             <Caption layer={layer} shown={shown} valid={valid} />
@@ -105,10 +105,10 @@ function Caption({ layer, shown, valid }: { layer: GibsLayerKey; shown: string; 
   }
   return (
     <>
-      valid <span className="font-mono text-ink-2">{valid.valid}</span> · observation · NASA GIBS · {m.note}
+      valid <span className="font-mono text-ink-2">{valid.valid}</span> · NASA GIBS observation
       {valid.steps > 0 && (
         <>
-          {" "}· no image for {valid.requested} yet, stepped back {valid.steps} day{valid.steps > 1 ? "s" : ""}
+          {" "}· latest available
         </>
       )}
     </>

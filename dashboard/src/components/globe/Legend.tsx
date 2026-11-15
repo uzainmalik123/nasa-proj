@@ -35,8 +35,8 @@ export default function Legend({
 }: { colouring: Colouring; fires?: FiresFile | null; firesOn?: boolean; gibs?: GibsValid | null; zoom?: number }) {
   return (
     <div
-      className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-[10px] text-muted backdrop-blur"
-      style={{ minWidth: BAR_W + 24, maxWidth: BAR_W + 64 }}
+      className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-white/10 bg-black/70 px-3.5 py-3 text-[11px] leading-[1.4] text-muted backdrop-blur"
+      style={{ width: BAR_W + 76 }}
     >
       {colouring.kind === "risk" ? <RiskLegend c={colouring} ring={lowIsRing(zoom)} /> : <TrendLegend c={colouring} />}
       {gibs && <GibsRow g={gibs} />}
@@ -57,21 +57,21 @@ function FireRow({ fires, zoom }: { fires: FiresFile | null; zoom: number }) {
   // F1: below zoom 4 the globe draws the heatmap, so the legend shows its ramp
   if (zoom < HEAT_LEGEND_ZOOM) {
     return (
-      <div className="mt-2 border-t border-white/10 pt-2" data-fire-legend="heat">
+      <div className="mt-2.5 border-t border-white/10 pt-2.5" data-fire-legend="heat">
         <div className="flex items-center gap-2">
           <span className="inline-block h-2 w-10 rounded-sm" style={{ backgroundImage: heatGradient }} />
-          <span>active fires · density of VIIRS detections, last 24 h</span>
+          <span className="text-ink-2">Active fires, last 24 h</span>
         </div>
         {fires && (
-          <div className="mt-0.5 text-muted">
-            {fireSourceLabel(fires.source)} · FIRMS · newest {fmtAcq(fires.newest_acq)} · zoom in for cells
+          <div className="mt-1 tabular-nums">
+            {fireSourceLabel(fires.source)} · newest {fmtAcq(fires.newest_acq)}
           </div>
         )}
       </div>
     );
   }
   return (
-    <div className="mt-2 border-t border-white/10 pt-2" data-fire-legend="dots">
+    <div className="mt-2.5 border-t border-white/10 pt-2.5" data-fire-legend="dots">
       <div className="flex items-center gap-2">
         <span className="flex items-center gap-1.5">
           {FIRE_SAMPLES.map((n) => (
@@ -87,14 +87,11 @@ function FireRow({ fires, zoom }: { fires: FiresFile | null; zoom: number }) {
             />
           ))}
         </span>
-        <span>active fire detections (FIRMS)</span>
-      </div>
-      <div className="mt-0.5 text-muted">
-        {FIRE_CELL_DEG}° cells · {FIRE_SAMPLES.join(" / ")} detections · hover for the count
+        <span className="text-ink-2">Fire detections per {FIRE_CELL_DEG}° cell</span>
       </div>
       {fires && (
-        <div className="text-muted">
-          {fireSourceLabel(fires.source)} · last 24 h · newest {fmtAcq(fires.newest_acq)}
+        <div className="mt-1 tabular-nums">
+          {FIRE_SAMPLES.join(" / ")} · {fireSourceLabel(fires.source)} · newest {fmtAcq(fires.newest_acq)}
         </div>
       )}
     </div>
@@ -105,7 +102,7 @@ function FireRow({ fires, zoom }: { fires: FiresFile | null; zoom: number }) {
 function GibsRow({ g }: { g: GibsValid }) {
   const m = GIBS_LAYERS[g.key];
   return (
-    <div className="mt-2 border-t border-white/10 pt-2">
+    <div className="mt-2.5 border-t border-white/10 pt-2.5">
       <div className="flex items-center gap-1.5 text-ink-2">
         <span className="inline-block h-2 w-2 rounded-full" style={{ background: m.colour }} />
         {m.label}
@@ -123,7 +120,7 @@ function GibsRow({ g }: { g: GibsValid }) {
         </>
       )}
       <div className="mt-0.5 text-muted">
-        {g.valid ? `valid ${g.valid} · observation · NASA GIBS` : `no image within ${GIBS_MAX_STEP_BACK} days · NASA GIBS`}
+        {g.valid ? `valid ${g.valid} · NASA GIBS` : `no image within ${GIBS_MAX_STEP_BACK} days · NASA GIBS`}
       </div>
     </div>
   );
@@ -147,11 +144,11 @@ function LowMark({ ring }: { ring: boolean }) {
 function RiskLegend({ c, ring }: { c: Extract<Colouring, { kind: "risk" }>; ring: boolean }) {
   // M-MODE+URL: "now" = the category each place is in today, "next14" = the forecast probability
   const title = `${HAZARD_LABEL[c.hazard]} · ${c.mode === "now" ? "category today" : "next 14 days"}`;
-  const sub = c.validFrom && c.validTo ? `risk assessment · valid ${c.validFrom} → ${c.validTo}` : "risk assessment";
+  const sub = c.validFrom && c.validTo ? `valid ${c.validFrom.slice(5)} – ${c.validTo.slice(5)} · calibrated probability` : "risk assessment";
   return (
     <div>
-      <div className="font-semibold uppercase tracking-[0.08em] text-ink-2">{title}</div>
-      <div className="mb-1.5 text-muted">{sub}</div>
+      <div className="font-semibold uppercase tracking-[0.06em] text-ink">{title}</div>
+      <div className="mb-2 tabular-nums">{sub}</div>
       {c.continuous ? (
         <>
           <div
@@ -172,20 +169,18 @@ function RiskLegend({ c, ring }: { c: Extract<Colouring, { kind: "risk" }>; ring
               </span>
             ))}
           </div>
-          <div className="mt-1 flex items-center gap-1.5 text-ink-2">
+          <div className="mt-1.5 flex items-center gap-1.5 text-ink-2">
             <LowMark ring={ring} />
-            low · under {Math.round(RISK_FLOOR * 100)} %
-            <span className="text-muted">· {ring ? "ring when zoomed in" : "dot at the world zoom"}</span>
+            low, under {Math.round(RISK_FLOOR * 100)} %
           </div>
-          <div className="mt-0.5 text-muted">calibrated probability</div>
-          <div className="text-muted">ramp stops set 14 Nov · 50 / 80 / 95 / 99th pct</div>
           {c.hazard in CATEGORY_THRESHOLD_P && (
-            <div className="text-muted">
+            <div className="mt-0.5">
               {(Object.entries(CATEGORY_THRESHOLD_P[c.hazard as "wildfire" | "rain"]) as [string, number][])
-                .map(([cat, v]) => `${cat} ≥ ${Math.round(v * 100)} %`)
-                .join(" · ")}
+                .map(([cat, v]) => `${cat} ${Math.round(v * 100)}`)
+                .join(" · ")} %
             </div>
           )}
+          <div className="mt-0.5">stops: 50 / 80 / 95 / 99th pct, set 14 Nov</div>
         </>
       ) : (
         <>
@@ -219,10 +214,10 @@ function TrendLegend({ c }: { c: Extract<Colouring, { kind: "trend" }> }) {
   const d = slopeDigits(c.scale);
   return (
     <div>
-      <div className="font-semibold uppercase tracking-[0.08em] text-ink-2">
+      <div className="font-semibold uppercase tracking-[0.06em] text-ink">
         {VARIABLE_LABEL[c.variable]} · {c.window} trend
       </div>
-      <div className="mb-1.5 text-muted">Sen&apos;s slope, Mann-Kendall</div>
+      <div className="mb-2">Sen&apos;s slope, Mann-Kendall</div>
       <div className="h-2 rounded-sm" style={{ width: BAR_W, backgroundImage: trendGradient }} />
       <div className="mt-0.5 flex justify-between font-mono" style={{ width: BAR_W }}>
         <span>{signed(-c.scale, d)}</span>
