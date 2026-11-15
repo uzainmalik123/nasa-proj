@@ -14,6 +14,13 @@ const LABEL_W = 168;   // left column for the driver label
 const VALUE_W = 46;    // right column for the feature value
 const END_LABEL = 38;  // room for "+0.41" past the bar end
 
+// A feature value can be null (e.g. days_since_fire where no fire was ever
+// seen, KI-20); the SHAP bar is still valid, so only the number becomes "–".
+function fmtValue(v: number | null, big = false): string {
+  if (v == null || !Number.isFinite(v)) return "–";
+  return big && Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2);
+}
+
 export function ShapBars({ drivers }: { drivers: ShapDriver[] }) {
   const { ref, width } = useSize<HTMLDivElement>();
   const rows = useMemo(() => [...drivers].sort((a, b) => Math.abs(b.shap) - Math.abs(a.shap)), [drivers]);
@@ -37,7 +44,7 @@ export function ShapBars({ drivers }: { drivers: ShapDriver[] }) {
           const cy = k * ROW + ROW / 2;
           return (
             <g key={d.feature}>
-              <title>{`${d.label}: feature value ${d.value.toFixed(2)}, SHAP ${signed(d.shap, 3)}`}</title>
+              <title>{`${d.label}: feature value ${fmtValue(d.value)}, SHAP ${signed(d.shap, 3)}`}</title>
               <text x={x0 - 8} y={cy} dy="0.35em" textAnchor="end" fontSize={10.5} fill={P.ink2}>
                 {d.label.length > 32 ? `${d.label.slice(0, 31)}…` : d.label}
               </text>
@@ -49,7 +56,7 @@ export function ShapBars({ drivers }: { drivers: ShapDriver[] }) {
                 {signed(d.shap, 2)}
               </text>
               <text x={width} y={cy} dy="0.35em" textAnchor="end" fontSize={10} fill={P.muted} className="font-mono">
-                {Math.abs(d.value) >= 100 ? d.value.toFixed(0) : d.value.toFixed(2)}
+                {fmtValue(d.value, true)}
               </text>
             </g>
           );

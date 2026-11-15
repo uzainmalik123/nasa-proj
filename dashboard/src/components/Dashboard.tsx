@@ -29,6 +29,7 @@ import HazardsTable from "./panels/HazardsTable";
 import Kpis from "./panels/Kpis";
 import Movers from "./panels/Movers";
 import PlacePanel from "./panels/PlacePanel";
+import ErrorBoundary from "./panels/ErrorBoundary";
 import Sources from "./panels/Sources";
 import TrendsTable from "./panels/TrendsTable";
 
@@ -350,16 +351,18 @@ export default function Dashboard() {
       >
         <Kpis data={data} filter={filter} />
         {s.mode === "now" ? (<>{trendsTable}{hazardsTable}</>) : (<>{hazardsTable}{trendsTable}</>)}
-        <PlacePanel
-          data={data}
-          selected={s.selected}
-          trendVar={s.trendVar}
-          hazard={s.hazard}
-          mode={s.mode}
-          onTrendVar={(trendVar) => setS((p) => ({ ...p, trendVar, lens: "trend" }))}
-          onHazard={(hazard) => setS((p) => ({ ...p, hazard, lens: "hazard" }))}
-          onClear={() => select(null)}
-        />
+        <ErrorBoundary key={s.selected ?? "none"}>
+          <PlacePanel
+            data={data}
+            selected={s.selected}
+            trendVar={s.trendVar}
+            hazard={s.hazard}
+            mode={s.mode}
+            onTrendVar={(trendVar) => setS((p) => ({ ...p, trendVar, lens: "trend" }))}
+            onHazard={(hazard) => setS((p) => ({ ...p, hazard, lens: "hazard" }))}
+            onClear={() => select(null)}
+          />
+        </ErrorBoundary>
         <Movers
           places={places}
           risk={data?.risk ?? null}
