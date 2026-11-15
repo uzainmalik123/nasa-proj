@@ -47,3 +47,17 @@ html, body {
 .place-float { scrollbar-width: thin; animation: place-in 150ms ease-out; }
 @keyframes place-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .place-float { animation: none; } }
+
+/* imagery bar (GibsControl): below lg it spans the width just above the Globe / Panels
+   switch (fixed bottom-4, 52 px tall) instead of starting 510 px from the left, which
+   pushed it off small screens; at lg it keeps the original bottom-centre placement */
+.gibs-bar { left: 8px; right: 8px; bottom: 76px; }
+@media (min-width: 1024px) {
+  .gibs-bar { left: max(calc(50% - 20px), 510px); right: auto; bottom: 12px; transform: translateX(-50%); width: min(480px, 62%); }
+}
+
+/* globe legend (Legend.tsx, bottom-3 left-3): below lg lift it above the imagery bar and the
+   Globe / Panels switch and shrink it a little, so the three never overlap on a phone */
+@media (max-width: 1023.98px) {
+  section .pointer-events-none.absolute.bottom-3.left-3.rounded-xl { bottom: 142px; transform: scale(0.85); transform-origin: bottom left; }
+}
