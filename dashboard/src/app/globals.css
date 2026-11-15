@@ -86,3 +86,13 @@ html, body {
 .topbar-controls button { white-space: nowrap; }
 .topbar-controls select { max-width: 112px !important; }
 @media (min-width: 1536px) { .topbar-controls select { max-width: 150px !important; } .topbar-controls input { width: 150px !important; } }
+
+/* type pass: top-bar controls read as one quiet row, sentence-case labels, 12 px values */
+.topbar-controls label { font-size: 11px; text-transform: capitalize; letter-spacing: 0; color: var(--muted); gap: 6px; }
+.topbar-controls select { font-size: 12px; height: 28px; padding: 0 6px; border-radius: 8px; }
+.topbar-controls [role="radiogroup"] { border-radius: 8px; }
+.topbar-controls [role="radiogroup"] button { font-size: 11px; text-transform: none; letter-spacing: 0; padding: 5px 10px; }
+.topbar-controls input { font-size: 12px; }
+/* floating place panel: a real surface so it separates from the globe */
+.place-float > section { background: rgba(20, 20, 19, 0.94); backdrop-filter: blur(10px); }
+.topbar-controls > span { font-size: 11px; text-transform: capitalize; letter-spacing: 0; }

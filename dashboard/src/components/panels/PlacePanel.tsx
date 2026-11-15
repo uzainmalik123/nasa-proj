@@ -99,14 +99,26 @@ export default function PlacePanel({ data, selected, trendVar, hazard, mode = "n
   return (
     <Card
       title={
-        <span className="flex items-center justify-between">
-          <span>Selected place · {p.name}, {p.country}</span>
-          <button type="button" onClick={onClear} className="text-[10px] normal-case tracking-normal text-muted hover:text-ink" aria-label="clear selection">
-            clear
+        <span className="flex items-start justify-between gap-3 normal-case tracking-normal">
+          <span className="min-w-0">
+            <span className="block text-[18px] font-semibold leading-[1.2] tracking-[-0.01em] text-ink [text-wrap:balance]">
+              {p.name}<span className="font-normal text-muted">, {p.country}</span>
+            </span>
+            <span className="mt-1 block text-[11px] font-normal leading-[1.4] text-muted tabular-nums" title={`run ${data.run.run_id} · retrieved ${fmtUtc(risk.meta.generated_at, true)}`}>
+              {p.continent} · {p.lat.toFixed(2)}, {p.lon.toFixed(2)} · pop {fmtCount(p.pop)} within {p.radius_km} km{p.capital ? " · capital" : ""}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label="close place panel"
+            title="close (Esc)"
+            className="-mr-1 -mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-ink"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </span>
       }
-      caption={`${p.continent} · ${p.lat.toFixed(2)}, ${p.lon.toFixed(2)} · pop ${fmtCount(p.pop)} within ${p.radius_km} km${p.capital ? " · capital" : ""} · run ${data.run.run_id} · retrieved ${fmtUtc(risk.meta.generated_at, true)}`}
     >
       {/* ── trend ─────────────────────────────────────────────────────── */}
       <SectionHead
