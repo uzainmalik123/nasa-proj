@@ -54,6 +54,11 @@ Within 4, for the column's navigation:
 - Nav tabs carrying a headline figure or a stat ticker: rejected as cluttered.
 - **Icon tab strip across the top of the column, icon and label only, no badges, no figures.** Chosen.
 
+For the column's width (raised by the builder check: the mockup's 300 px cannot hold today's tables, whose fixed columns need ~400 px plus the name):
+- Compact row anatomy at 340 px, dropping population and the sparkline into tooltips: rejected, the user wants the whole data visible.
+- Sideways scroll: rejected.
+- **As wide as the data needs and no wider, about 460 px, every column kept.** Chosen. The user's rule: fit the whole data, don't overshadow the globe.
+
 ## 5. The layout
 
 ```
@@ -61,7 +66,7 @@ Within 4, for the column's navigation:
 │ ● Earth System Trend Detective   [⌕ search place  /] [Now|Next 14 days] [Wildfire▾]   │
 │   NASA FIRMS · POWER · GIBS · Open-Meteo   [Rainfall▾] [World▾] [Imagery: none▾]      │
 │                                                          ● LIVE · updated 3h ago  08:58 UTC │
-├──────────── left column · 300 px ────────────┬──────────── stage · the rest ────────────┤
+├──────────── left column · ~460 px ───────────┬──────────── stage · the rest ────────────┤
 │ [Risk] [Trends] [Place] [Alerts] [Regions]   │ ┌legend┐                     ┌place card┐ │
 │ [Sources]        icon + label, active underlined │ └──────┘                     └──────────┘ │
 │ ─────────────────────────────────────────── │                                            │
@@ -83,7 +88,9 @@ Centre: the existing controls, unchanged in behaviour: search (focus on `/`), No
 
 Right: the live/stale pill exactly as today, then a mono UTC clock `YYYY-MM-DD HH:MM UTC` ticking once a minute. The pill's title tooltip keeps run id and finish time.
 
-### 5.2 Left column (300 px, `bg-surface`-ish `#0f0f0e` **(call)**, 1 px `border` on the right)
+### 5.2 Left column (as wide as the widest table needs, ~460 px; `#0f0f0e` **(call)**; 1 px `border` on the right)
+
+The width is set by the data, not the mockup: the hazards table keeps rank, place, country, value with ramp bar, hindcast sparkline, Δ 7d, category and population; the trends table keeps all of its columns; `Movers` stays two tables side by side; the place panel keeps its four hazard cards in a row. Measure the widest tab once built and set the column to that, then stop. It must never grow past ~480 px: at 1600 px wide the globe keeps ≥ 1100 px, against 1040 px boxed in today.
 
 **Tab strip.** Six tabs in one row, equal width, each an icon (lucide-react, 14 px **(call)**: `flame`, `trending-down`, `map-pin`, `bell`, `globe`, `database`) above a 9 px label. Active tab: `text-ink`, icon tinted accent at 20 % with an accent border, a 2 px accent underline. Inactive: `text-muted`. No badges, no figures. Keyboard: tabs are `role="tab"`, arrow keys move, `1`–`6` jump **(call)**.
 
@@ -91,7 +98,7 @@ Tabs and what each holds (every component exists today; it moves, it is not rewr
 
 | Tab | Content, top to bottom | Today's component |
 |---|---|---|
-| Risk | hazards table (full height, scrolls inside), movers | `HazardsTable`, `Movers` |
+| Risk | hazards table (takes the remaining height, scrolls inside), movers pinned under it as a compact top-5 up / top-5 down so both are on screen without scrolling **(call)** | `HazardsTable`, `Movers` |
 | Trends | trends table (full height) | `TrendsTable` |
 | Place | the selected place's whole panel; the empty state when nothing is selected | `PlacePanel` |
 | Alerts | feed | `Feed` |
@@ -125,10 +132,11 @@ Two rows.
 **Timeline.** Play button (650 ms per step, as today's spec), a track spanning −14 days to +14 days with today marked, a hatched band over the past, tick labels every 7 days in mono, a knob, and a mono date readout with a `hindcast ◂ ▸ forecast` caption.
 
 What scrubbing does **(call)**:
-- Days ≤ today recolour the globe's risk points from `risk.history[hazard][place][day]` for the selected hazard (the last 90 days exist; the track shows 14, the full range is a Low item). Tables do not change with the day; the day is a globe view.
-- Days > today exist only for wildfire: points recolour from `fwi_forecast[place][day]`, normalised to the 16-day max per place, and the legend title changes to "fire-weather index · forecast (Open-Meteo)" so nobody reads a forecast index as the model's probability. For other hazards the forecast half is disabled (muted, not draggable) with the caption "forecast scrubbing: wildfire only".
-- When an imagery layer is on, its date follows the scrubbed day, clamped to the layer's available range as `clampGibsDate` does today.
-- `day` is in the URL (`?day=YYYY-MM-DD`), absent means today.
+- "Today" on the track is `risk.valid_from` (the run's day), not the browser clock, so the knob always sits on real values. `history_days` ends the day before it and `forecast_days` starts on it, so the track is contiguous.
+- Days < today recolour the globe's risk points from `risk.history[hazard][place][day]` for the selected hazard (the last 90 days exist; the track shows 14, the full range is a Low item). Tables do not change with the day; the day is a globe view. History holds the native value (p, index, days-above) and no category, and the dashboard has category thresholds only for wildfire and rain, so: scrubbing always colours by the continuous value ramp, the legend title says "hindcast · <day>", and for drought and heat the past half is disabled with the caption "hindcast scrubbing: wildfire and rain" until their thresholds are published (a contracts.md note and a pipeline touch; Low item).
+- Days > today exist only for wildfire: points recolour from `fwi_forecast[place][day]` on its absolute 0–1 scale (it is already FWI severity 0–1 per contracts.md; do not normalise per place, that would light up every place on its own worst day), and the legend title changes to "fire-weather index · forecast (Open-Meteo)" so nobody reads a forecast index as the model's probability. For other hazards the forecast half is disabled (muted, not draggable) with the caption "forecast scrubbing: wildfire only".
+- When an imagery layer is on, its date follows the scrubbed day, clamped to the layer's available range as `clampGibsDate` does today. The legacy `?date=` URL parameter folds into `?day=` on load (read once, written back as `day`), so the raster and the points can never show different days.
+- `day` is in the URL (`?day=YYYY-MM-DD`), absent means today. A `day` older than the newest run's history range clamps to its edge.
 
 **Gauges.** Six tiles in one row, each a 30 px ring (conic gradient) plus label, 13 px value, 7 px sub. Rings only where there is an honest denominator; otherwise the ring is omitted and the value stands alone **(call)**:
 
@@ -152,7 +160,24 @@ Observed in the current build and to be fixed as part of this work:
 - The hindcast sparkline fill is a flat yellow block behind every row. Fix: 1.2 px line in `s2`, no fill, as DESIGN.md §5's sparkline rule says.
 - Green appears as both "live" and "good KPI sub" and the table caption's category names. Fix: green only on the live pill, the gates tile and the hit-rate tile. Category names in captions are `ink-2`.
 - Three gradients today: the title pill tint, the control panel `bg-black/55`, and the slider panel. Fix: one glass recipe for every floating panel: `bg-black/60 border-white/10 backdrop-blur rounded-xl`. No other gradient except the legend ramp and the gauge rings.
-- The globe's fire detections (white dot, red ring) blanket Africa into a pink mass at zoom 1.6. Fix: at zoom < 2.5 draw fires as the glow layer only (no dot), as DESIGN.md §4 already allows for binned data **(call)**.
+- The globe's fire detections blanket Africa into a pink mass at zoom 1.6 and sit on a visible 0.25° grid. Fixed by §6.1 below, not by styling the dots.
+
+### 6.1 Fire layer: the wow moment
+
+State on 2026-11-15 (s3-globe, KI-1 done): the fire cells have a hover tooltip (count, cell size, max FRP, source, newest acquisition), a legend row with three sample dots for 1 / 10 / 50 detections, and a radius that grows with √count, scaled 0.75× at world zoom. `globe/fires.ts` holds the radius law, colours and formatters. All of that stays; it is the zoomed-in experience. The grid still shows at world zoom because every dot is a cell centre, and no dot styling can hide that.
+
+**Band 1 · heatmap at world zoom** (S3 only, ~1 h, ship first: it is the demo's opening frame)
+- One `heatmap` layer on the existing `fires` GeoJSON source, inserted under the glow and dot layers. `heatmap-weight` = `min(count, 60) / 60` so one mega-cell cannot wash out a region; `heatmap-radius` ≈ 18 px at zoom 2 rising to ≈ 28 px at zoom 4; `heatmap-intensity` 1; `heatmap-color` from transparent through `#9a3412`, `#ea580c`, `#fbbf24` to `#fef3c7`, the risk ramp's own colours, so the globe stays one system.
+- Crossfade on zoom: `heatmap-opacity` 0.9 at zoom ≤ 2.5 → 0 at zoom 4.5; the existing glow and dot layers get the inverse (`circle-opacity` 0 at 2.5 → 1 at 4.5). At the fly-to zoom (5.2) a judge sees exactly the KI-1 dots and tooltip.
+- Legend fire row: below zoom 4 show the ramp swatch and "active fires · density of VIIRS detections, last 24 h"; above it show the three sample dots as today. One conditional in `Legend.tsx` fed by a `zoom` value the globe already tracks for the GIBS control.
+- The tooltip hit-test stays on the dot layer; hovering the heatmap does nothing, which is right for a density view.
+- No pipeline change, no new file.
+
+**Band 2 · real detections when zoomed in** (S1 + S3, 2–3 h, only if time allows)
+- S1 writes a second file from the same live parquet `ingest/fires24.py` reads: `fires_points.json` = `{ "meta", "source", "newest_acq", "points": [[lon, lat, frp], …] }` at two decimals, same source filter as the bins. ~35k rows ≈ 600 KB raw, ≈ 220 KB gzipped from Pages. Contracts.md §3 gains the file with a dated note; gates do not read it.
+- S3 loads it lazily the first time zoom crosses 4 (not in `loadAll`, so first paint is unchanged), then points the dot and glow layers at a second source with the real positions, radius by FRP (`2 + 0.5·√FRP` px, capped at 11) and the same tooltip minus the cell line. The bins stay for the heatmap and for sessions that never zoom in. If the fetch fails the bins keep drawing; nothing breaks.
+- Never jitter the bin centres to hide the grid. Fake positions are worse than a visible grid.
+- The dock's timeline does not touch fires; the file is the last 24 h only.
 
 ## 7. Type and density
 
@@ -174,4 +199,25 @@ Observed in the current build and to be fixed as part of this work:
 - Where the day-scrub recolouring lives (a `day` prop on `Globe` that picks `history`/`fwi_forecast` over `now` is the obvious shape).
 - The gauge ring component and the dock's responsive behaviour between 1280 and 1600 px (tiles may drop their sub line).
 - Whether the clock is a component or lives in the top bar.
-- Order of work. Suggested: column + tabs first (biggest visual change, no new data logic), then top bar, then dock gauges, then timeline scrubbing, then the colour cleanup, then DESIGN.md §3 rewrite and a new walk.mjs proof pass.
+- `walk.mjs` depends on `aside > section` cards and the subtitle text "places on watch ·", both gone; it needs a rewrite alongside L1.
+- `lucide-react` is not installed; add it with L1.
+
+## 10. Work packages and status
+
+This section is the tracker. The work is split across sessions; each session takes one package, builds it on a branch from `origin/main`, updates the status line here in the same PR, and hands back with screenshots per the repo's handback rule. Order matters only where noted. Owners follow contracts.md §1 (S3 globe, S4 panels, S1 pipeline).
+
+| ID | Package | Owner | Depends on | Status |
+|---|---|---|---|---|
+| L1 | Left column with the six-tab strip; move the eleven sections into tabs; column footer with source dots; KPI tiles removed; column width measured and set (§5.2); `tab` in state and URL; `walk.mjs` rewritten; `lucide-react` added | S4 | – | open |
+| L2 | Top bar (§5.1): brand + source strip, controls moved up, imagery select back in the bar, live pill, UTC clock; title block and floating control panel removed from the globe | S4 | L1 | open |
+| L3 | Stage furniture (§5.3): legend to top-left, place card top-right, `GibsControl` removed from the globe | S3 | L2 | open |
+| L4 | Dock gauges (§5.4 gauges table): ring component, six tiles, region filter, tooltips | S4 | L1 | open |
+| L5 | Dock timeline (§5.4 timeline): track, play, `day` in state and URL, globe recolour from `history` / `fwi_forecast`, GIBS date follows the day, `date=` folded into `day=` | S3 | L3, L4 | open |
+| L6 | Colour usage cleanup (§6 bullets): ramp-coloured bars, zero-delta chips muted, sparklines without fill, green only on live/gates/hit-rate, one glass recipe, captions to the Sources tab (§7) | S4 | L1 | open |
+| F1 | Fire heatmap at world zoom with zoom crossfade and legend swap (§6.1 band 1) | S3 | – (ship first) | open |
+| F2 | `fires_points.json` from the pipeline, lazy load above zoom 4, real-position dots (§6.1 band 2) | S1 + S3 | F1 | open, only if time allows |
+| L7 | DESIGN.md §3 and §4 rewritten to match; KNOWN_ISSUES entries KI-14 / KI-15 re-checked against the new chrome; final walk proof | S4 | all above | open |
+
+Done before this document: KI-1 fire tooltip, legend row and √count radii (s3-globe, 2026-11-15).
+
+Not in scope here, tracked elsewhere: a landing or pitch page; mobile.
