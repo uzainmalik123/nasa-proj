@@ -3,7 +3,8 @@
 The three upstreams are independent, so they run in three threads (each with
 its own pacing). Places come from ``data/places.parquet``; in CI that file does
 not exist on a cold run (``pipeline/data`` is gitignored), so it is built with
-``places.build_places.build()`` on the fly. ``PLACE_LIMIT=<n>`` keeps the n
+``places.build_places.build()`` on the fly; the dense Pakistan tier (PRD M9,
+``places.pakistan``) is appended whenever its rows are missing. ``PLACE_LIMIT=<n>`` keeps the n
 most populous places (the PRD §10 fallback if POWER throttles).
 """
 
@@ -44,6 +45,13 @@ def load_places() -> pd.DataFrame:
         config.PLACES_PARQUET.parent.mkdir(parents=True, exist_ok=True)
         places.to_parquet(config.PLACES_PARQUET, index=False)
         log.info("places: built %d", len(places))
+    # PRD M9: the dense Pakistan tier is appended after the global rows and
+    # written back, so the data branch carries it from the first run on
+    from places import pakistan
+
+    places, added = pakistan.append_tier(places)
+    if added:
+        places.to_parquet(config.PLACES_PARQUET, index=False)
     limit = int(os.environ.get("PLACE_LIMIT", "0") or 0)
     if limit and limit < len(places):
         places = places.sort_values("pop", ascending=False).head(limit)
@@ -167,11 +175,18 @@ def run(ctx: dict) -> None:
     log.info("stage ingest · run %s", ctx["run_id"])
     places = load_places()
     ctx["places"] = places
-    # G1 budget: a run that starts without a POWER cache is the cold run (60 min, else 15)
+    # G1 budget: a run that starts without a POWER cache, or with at least
+    # POWER_COLD_MIN_NEW places lacking one (a new tier), is cold (60 min, else 15)
     power_dir = config.CACHE_DIR / "power"
-    ctx["cold"] = not power_dir.exists() or not any(power_dir.glob("*.parquet"))
+    uncached = sum(not (power_dir / f"{pid}.parquet").exists() for pid in places["id"])
+    ctx["cold"] = uncached >= min(len(places), config.POWER_COLD_MIN_NEW)
     if ctx["cold"]:
-        log.warning("no POWER cache: cold run (G1 budget %d s)", config.G1_COLD_MAX_S)
+        log.warning(
+            "%d/%d places without a POWER cache: cold run (G1 budget %d s)",
+            uncached,
+            len(places),
+            config.G1_COLD_MAX_S,
+        )
     res: dict = {}
     with ThreadPoolExecutor(max_workers=3, thread_name_prefix="ingest") as ex:
         futs = {

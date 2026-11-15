@@ -35,6 +35,15 @@ TIER_MIN_POP = {1: 1_000_000, 2: 300_000, 3: 300_000}
 RADIUS_KM = 50  # watch radius around every place; also the dedupe distance
 DEDUPE_KM = 50
 
+# ---- dense Pakistan tier (PRD M9) -----------------------------------------
+# places.tier: "pk" for the district rows appended by places/pakistan.py, null
+# for the global tier (PLACE_TIER). The global constants above are untouched.
+PK_TIER = "pk"
+PK_RADIUS_KM = 30
+PK_DEDUPE_KM = 30  # a district within this of a global place / larger district is skipped
+POWER_COLD_MIN_NEW = 50  # ≥ this many places without a POWER cache → the cold G1 budget
+POWER_TIER_REFRESH_H = 6  # tier places re-fetch POWER when the UTC hour divides by this
+
 # ---- FIRMS -----------------------------------------------------------------
 # Live dots. Probed 2026-11-14 03:30 UTC with world/1/<yesterday>:
 #   VIIRS_NOAA21_NRT 46,378 rows · VIIRS_NOAA20_NRT 42,826 · VIIRS_SNPP_NRT 0

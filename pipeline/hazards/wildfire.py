@@ -303,7 +303,8 @@ def text(pi: common.PlaceInputs, p: float, row: pd.Series, drivers: list[dict], 
     if not pi.has_power:
         return f"No observation record for {pi.name}; wildfire risk not assessed."
     bits = [
-        f"{p * 100:.0f}% chance of 3 or more fire detections within 50 km of {pi.name} "
+        f"{p * 100:.0f}% chance of 3 or more fire detections within {pi.radius_km} km "
+        f"of {pi.name} "
         f"in the next 14 days ({cat})."
     ]
     r30 = row.get("rain_anom_30d")

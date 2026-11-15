@@ -36,7 +36,10 @@ export interface AppState {
   gibsDate: string | null;
 }
 
-/** ?mode=now|next14&hazard=…&var=…&continent=…&selected=…&gibs=…&date=YYYY-MM-DD (M7 makes this two-way). */
+/** ?region=pk opens on the dense Pakistan tier (PRD M9): the globe flies to the region's centre and zoom. */
+const REGIONS: Record<string, FlyTarget> = { pk: { lon: 69.35, lat: 30.4, zoom: 4.5 } };
+
+/** ?mode=now|next14&hazard=…&var=…&continent=…&selected=…&gibs=…&date=YYYY-MM-DD&region=pk (M7 makes this two-way). */
 function initialState(): AppState {
   const q = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
   const hazard = (HAZARDS as string[]).includes(q.get("hazard") ?? "") ? (q.get("hazard") as Hazard) : "wildfire";
@@ -49,7 +52,7 @@ function initialState(): AppState {
     trendVar,
     selected: sel != null && sel !== "" && Number.isFinite(Number(sel)) ? Number(sel) : null,
     continent: q.get("continent") || null,
-    flyTo: null,
+    flyTo: REGIONS[q.get("region") ?? ""] ?? null,
     gibsLayer: gibs && gibs in GIBS_LAYERS ? (gibs as GibsLayerKey) : null,
     gibsDate: q.get("date"),
   };

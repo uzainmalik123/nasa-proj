@@ -46,6 +46,7 @@ class PlaceInputs:
     place_id: str
     name: str
     pop: int
+    radius_km: int = config.RADIUS_KM  # 30 for the Pakistan tier (PRD M9)
     has_power: bool = False
     has_forecast: bool = False
     last_obs: date | None = None
@@ -143,7 +144,11 @@ def place_inputs(
     today: date,
 ) -> PlaceInputs:
     pi = PlaceInputs(
-        idx=i, place_id=str(place["id"]), name=str(place["name"]), pop=int(place["pop"])
+        idx=i,
+        place_id=str(place["id"]),
+        name=str(place["name"]),
+        pop=int(place["pop"]),
+        radius_km=int(place.get("radius_km", config.RADIUS_KM)),
     )
     if daily is None:
         return pi
