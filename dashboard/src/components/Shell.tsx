@@ -11,9 +11,9 @@ export function BrandBlock() {
   return (
     <div className="flex min-w-0 shrink-0 items-center gap-2.5">
       <span className="brand-mark" aria-hidden />
-      <div className="leading-tight">
+      <div className="hidden leading-tight min-[1280px]:block">
         <div className="text-[14px] font-semibold tracking-[-0.01em] text-ink">Earth System Trend Detective</div>
-        <div className="hidden text-[10px] text-muted 2xl:block">NASA FIRMS · POWER · GIBS · forecast Open-Meteo</div>
+        <div className="hidden text-[10px] text-muted min-[1820px]:block">NASA FIRMS · POWER · GIBS · forecast Open-Meteo</div>
       </div>
     </div>
   );
