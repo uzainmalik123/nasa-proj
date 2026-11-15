@@ -17,6 +17,8 @@ export interface PointState {
   color: string;
   o: number;
   sig: boolean;
+  /** KI-2: under the risk floor → drawn as the low mark (dot / ring by zoom), not the muted grey. */
+  low: boolean;
 }
 
 /** Radius range for a place point (DESIGN.md §4: 3 px watched → 11 px). */
@@ -87,8 +89,29 @@ export const CATEGORY_THRESHOLD_P: Record<"wildfire" | "rain", Record<Exclude<Ca
   rain: { elevated: 0.1, high: 0.25, extreme: 0.5 },
 };
 
-/** Below the first ramp stop a place renders as a 3 px muted dot (DESIGN.md §4). */
+/** Below the first ramp stop a place is "watched, low" and gets the low mark (DESIGN.md §4, KI-2). */
 export const RISK_FLOOR = RISK_STOPS[1][0];
+
+/**
+ * KI-2: the low mark. An off-white so it is visible on the dark basemap (the
+ * old muted grey at 0.5 opacity was ~1.6:1 against it); a filled 2 px dot at
+ * the world zoom, where overlapping places merge into one patch, melting into
+ * a 3.5 px ring by the detail zoom, where "empty" reads as "nothing has filled
+ * it yet". The crossfade zooms match the fire heatmap's (layout spec §6.1) so
+ * the whole globe flips between world view and detail view together. The
+ * Legend draws the same mark and switches at the midpoint (`lowIsRing`).
+ */
+export const LOW_COLOUR = "#c8c4bb";
+export const LOW_ZOOM_DOT = 2.5;
+export const LOW_ZOOM_RING = 4.5;
+export const LOW_R_DOT = 2;
+export const LOW_R_RING = 3.5;
+export const LOW_DOT_OPACITY = 0.9;
+export const LOW_RING_OPACITY = 0.75;
+export const LOW_RING_WIDTH = 1.2;
+export function lowIsRing(zoom: number): boolean {
+  return zoom >= (LOW_ZOOM_DOT + LOW_ZOOM_RING) / 2;
+}
 /** Significant trend points never shrink to the muted size. */
 export const TREND_FLOOR = 0.2;
 
@@ -210,7 +233,9 @@ export const FILTERED_OPACITY = 0.12;
 /**
  * Feature state for every place under the given colouring. `keep` is the set
  * of indices inside the continent filter; places outside it are dimmed to a
- * 3 px muted dot at FILTERED_OPACITY. null = no filter.
+ * 3 px muted dot at FILTERED_OPACITY. null = no filter. Under the risk floor a
+ * place gets the low mark (KI-2); muted grey is only "no assessment" and
+ * "not significant" (trend) now.
  */
 export function pointStates(
   c: Colouring,
@@ -220,8 +245,10 @@ export function pointStates(
   keep: Set<number> | null = null,
 ): PointState[] {
   const out: PointState[] = new Array(n);
-  const dim: PointState = { v: 0, r: R_MIN, color: P.muted, o: 0.5, sig: false };
-  const off: PointState = { v: 0, r: R_MIN, color: P.muted, o: FILTERED_OPACITY, sig: false };
+  const dim: PointState = { v: 0, r: R_MIN, color: P.muted, o: 0.5, sig: false, low: false };
+  const off: PointState = { v: 0, r: R_MIN, color: P.muted, o: FILTERED_OPACITY, sig: false, low: false };
+  // r is the ring radius: the layer sizes the dot / ring by zoom, the selection ring uses r
+  const low: PointState = { v: 0, r: LOW_R_RING, color: LOW_COLOUR, o: 1, sig: false, low: true };
   const skip = (i: number) => keep != null && !keep.has(i);
   if (c.kind === "risk") {
     for (let i = 0; i < n; i++) {
@@ -229,7 +256,7 @@ export function pointStates(
       const r = risk?.now[i];
       if (!r) { out[i] = dim; continue; }
       const v = hazardMagnitude(c.hazard, r, c.continuous);
-      out[i] = v < RISK_FLOOR ? dim : { v, r: riskRadius(v), color: riskColour(v), o: 1, sig: true };
+      out[i] = v < RISK_FLOOR ? low : { v, r: riskRadius(v), color: riskColour(v), o: 1, sig: true, low: false };
     }
     return out;
   }
@@ -241,7 +268,7 @@ export function pointStates(
     if (s == null || p == null || p >= 0.05) { out[i] = dim; continue; }
     const t = Math.max(-1, Math.min(1, s / c.scale));
     const v = Math.max(TREND_FLOOR, Math.abs(t));
-    out[i] = { v, r: trendRadius(v), color: trendColour(t), o: 1, sig: true };
+    out[i] = { v, r: trendRadius(v), color: trendColour(t), o: 1, sig: true, low: false };
   }
   return out;
 }

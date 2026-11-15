@@ -17,7 +17,10 @@ import { fmtCount } from "@/lib/format";
 import type { FiresFile, Hazard, Mode, Place, RiskFile, TrendsFile, Variable } from "@/lib/types";
 import Legend from "./Legend";
 import GibsControl from "./GibsControl";
-import { continentSet, hazardText, pickColouring, pointStates, trendText, type Colouring } from "./colour";
+import {
+  LOW_COLOUR, LOW_DOT_OPACITY, LOW_R_DOT, LOW_R_RING, LOW_RING_OPACITY, LOW_RING_WIDTH, LOW_ZOOM_DOT, LOW_ZOOM_RING,
+  continentSet, hazardText, pickColouring, pointStates, trendText, type Colouring,
+} from "./colour";
 import {
   FIRE_CELL_DEG, FIRE_DOT_RADIUS, FIRE_FILL, FIRE_GLOW_RADIUS, FIRE_STROKE, fireSourceLabel, fmtAcq, fmtCentre, fmtFrp,
 } from "./fires";
@@ -78,6 +81,25 @@ const L_GIBS = "gibs";
 // radius in px is computed in colour.ts (rank breakpoints for risk, linear for trend)
 const RADIUS: ExpressionSpecification = ["coalesce", ["feature-state", "r"], 3];
 const SELECTED_RADIUS: ExpressionSpecification = ["*", 1.5, RADIUS];
+// KI-2: a place under the risk floor is the low mark: a filled off-white dot at the world zoom that
+// crossfades into a hollow ring by the detail zoom. Pure paint expressions, evaluated on the GPU: no
+// JavaScript runs on zoom. ["zoom"] must be the input of a top-level interpolate, so the low / other
+// branch sits inside each stop.
+const IS_LOW: ExpressionSpecification = ["boolean", ["feature-state", "low"], false];
+const lowOr = (low: number | string, other: ExpressionSpecification | number | string): ExpressionSpecification =>
+  ["case", IS_LOW, low, other];
+const lowByZoom = (atDot: number, atRing: number, other: ExpressionSpecification | number): ExpressionSpecification =>
+  ["interpolate", ["linear"], ["zoom"], LOW_ZOOM_DOT, lowOr(atDot, other), LOW_ZOOM_RING, lowOr(atRing, other)];
+const PLACE_PAINT = {
+  "circle-radius": lowByZoom(LOW_R_DOT, LOW_R_RING, RADIUS),
+  "circle-color": lowOr(LOW_COLOUR, ["coalesce", ["feature-state", "color"], P.muted]),
+  "circle-opacity": lowByZoom(LOW_DOT_OPACITY, 0, ["coalesce", ["feature-state", "o"], 0.5]),
+  "circle-stroke-color": lowOr(LOW_COLOUR, "rgba(0,0,0,0.6)"),
+  "circle-stroke-width": lowOr(LOW_RING_WIDTH, 1),
+  "circle-stroke-opacity": lowByZoom(0, LOW_RING_OPACITY, 1),
+};
+/** Legend zoom, quantised to a quarter so a zoom gesture re-renders React a handful of times, not per frame. */
+const quantZoom = (z: number) => Math.round(z * 4) / 4;
 const NO_SELECTION: ExpressionSpecification = ["==", ["id"], -1];
 
 const KEEP_LABEL = /country|state|region|city|capital/i;
@@ -160,6 +182,8 @@ export default function Globe(props: GlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // view state only (what the 404 fallback resolved to), never app state
   const [gibsValid, setGibsValid] = useState<GibsValid | null>(null);
+  // view state: the legend swaps the low mark (dot / ring) with the zoom (KI-2)
+  const [zoom, setZoom] = useState(ZOOM_GLOBAL);
   const tipRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<MapState>({ map: null, ready: false, queue: [] });
   const latestRef = useRef<Latest | null>(null);
@@ -191,6 +215,10 @@ export default function Globe(props: GlobeProps) {
     });
     s.map = map;
     s.ready = false;
+    map.on("zoom", () => {
+      const z = quantZoom(map.getZoom());
+      setZoom((prev) => (prev === z ? prev : z));
+    });
 
     map.on("style.load", () => {
       map.setProjection({ type: "globe" });
@@ -210,13 +238,7 @@ export default function Globe(props: GlobeProps) {
         id: L_PLACES,
         type: "circle",
         source: SRC_PLACES,
-        paint: {
-          "circle-radius": RADIUS,
-          "circle-color": ["coalesce", ["feature-state", "color"], P.muted],
-          "circle-opacity": ["coalesce", ["feature-state", "o"], 0.5],
-          "circle-stroke-color": "rgba(0,0,0,0.6)",
-          "circle-stroke-width": 1,
-        },
+        paint: PLACE_PAINT,
       });
       map.addLayer({
         id: L_SELECTED,
@@ -408,7 +430,7 @@ export default function Globe(props: GlobeProps) {
         className="pointer-events-none absolute z-10 rounded-lg border border-white/10 bg-black/80 px-2.5 py-1.5 text-[11px] leading-snug backdrop-blur"
         style={{ display: "none" }}
       />
-      <Legend colouring={colouring} fires={fires} gibs={gibsLayer && gibsValid?.key === gibsLayer ? gibsValid : null} />
+      <Legend colouring={colouring} fires={fires} zoom={zoom} gibs={gibsLayer && gibsValid?.key === gibsLayer ? gibsValid : null} />
       {onGibsChange && <GibsControl layer={gibsLayer} date={gibsDate} valid={gibsValid} onChange={onGibsChange} />}
     </div>
   );

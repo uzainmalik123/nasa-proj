@@ -10,7 +10,8 @@
     "copy-worker": "node scripts/copy-worker.mjs",
     "postinstall": "node scripts/copy-worker.mjs",
     "predev": "node scripts/copy-worker.mjs",
-    "prebuild": "node scripts/copy-worker.mjs"
+    "prebuild": "node scripts/copy-worker.mjs",
+    "test": "node --import ./scripts/test-resolve.mjs --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "d3-interpolate": "^3.0.2",
