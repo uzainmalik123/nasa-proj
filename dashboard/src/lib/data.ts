@@ -2,6 +2,7 @@ import type {
   Data, FeedFile, FiresFile, FreshnessFile, HonestyFile, PlacesFile, RiskFile, RunFile,
   SeriesFile, TrendsFile,
 } from "./types";
+import { acceptRun, probeVerdict, readStored, runIdOf, writeStored } from "./cache";
 
 /**
  * Where the JSON lives. In production NEXT_PUBLIC_DATA_URL points at the raw
@@ -34,7 +35,8 @@ function bust(): string {
 }
 
 export async function loadJson<T>(file: string): Promise<T> {
-  const res = await fetch(`${DATA_URL}/${file}${bust()}`, { cache: "no-store" });
+  // "default", not "no-store": inside one 5-minute window the URL is the same, so a reload may reuse the HTTP cache
+  const res = await fetch(`${DATA_URL}/${file}${bust()}`, { cache: "default" });
   if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
   return (await res.json()) as T;
 }
@@ -67,4 +69,62 @@ export async function loadAll(onProgress?: (done: number, total: number) => void
     get<RunFile>(FILES.run),
   ]);
   return { places, trends, risk, series, fires, feed, freshness, honesty, run };
+}
+
+// ---- run-id keyed cache (KI-7 step 1c) -------------------------------------
+
+/** Re-probe interval. raw.githubusercontent's CDN max-age is 300 s: a probe sooner cannot see a newer run. */
+export const PROBE_MS = 5 * 60_000;
+
+export type DataSource = "cache" | "network";
+/** What the probe is doing, for the live pill. */
+export type ProbeState = "checking" | "current" | "updated" | "offline";
+
+export interface LoadHandlers {
+  onProgress: (done: number, total: number) => void;
+  onData: (data: Data, source: DataSource) => void;
+  onProbe: (state: ProbeState) => void;
+}
+
+/**
+ * Load for first paint: the cached run first, if any (instant, no network),
+ * then the probe decides whether a fetch is needed. Rejects only when there is
+ * no cached run and the network fails, as `loadAll` did.
+ */
+export async function loadData(h: LoadHandlers): Promise<void> {
+  const cached = await readStored();
+  if (cached) h.onData(cached.data, "cache");
+  await probeAndRefresh(cached?.runId ?? null, h, cached != null);
+}
+
+/**
+ * Fetch run.json fresh and compare. Same id → nothing else moves (one ~1 KB
+ * request). A different id → fetch the nine files; they replace the cached run
+ * only when they agree on one newer id (`acceptRun`), else the CDN is
+ * mid-publish and the next probe retries. Returns the run id now on screen.
+ */
+export async function probeAndRefresh(cachedRunId: string | null, h: LoadHandlers, haveCache = cachedRunId != null): Promise<string | null> {
+  h.onProbe("checking");
+  const probe = await loadJson<RunFile>(FILES.run).then((r) => r.run_id, () => null);
+  if (probeVerdict(cachedRunId, probe) === "current") {
+    h.onProbe(probe ? "current" : "offline");
+    return cachedRunId;
+  }
+  let fresh: Data;
+  try {
+    fresh = await loadAll(h.onProgress);
+  } catch (e) {
+    if (!haveCache) throw e;
+    h.onProbe("offline");
+    return cachedRunId;
+  }
+  if (!acceptRun(fresh, cachedRunId)) {
+    h.onProbe("current");
+    return cachedRunId;
+  }
+  const runId = runIdOf(fresh) ?? fresh.run.run_id;
+  h.onData(fresh, "network");
+  h.onProbe("updated");
+  void writeStored({ runId, savedAt: Date.now(), data: fresh });
+  return runId;
 }

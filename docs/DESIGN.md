@@ -109,7 +109,7 @@ Exposed to Tailwind v4 through `@theme inline` as `bg-page`, `bg-surface`, `text
 ```
 - The body never scrolls. Only the aside scrolls, with a thin scrollbar (`scrollbar-width: thin`).
 - The globe container must be `position: absolute; inset: 0` as an inline style. MapLibre's CSS sets `.maplibregl-map { position: relative }` and will override a class.
-- Title block: orange dot + title, one line of 11.5 px context under it, then a status pill (uppercase 10 px, coloured border and tinted background). In the real build the pill reads "live · updated 2h ago" in `good` green instead of the synthetic warning.
+- Title block: orange dot + title, one line of 11.5 px context under it, then a status pill (uppercase 10 px, coloured border and tinted background). In the real build the pill reads "live · updated 2h ago" in `good` green instead of the synthetic warning; while the run probe is out it appends "· checking for a newer run", and when the probe fails with a cached run on screen it turns `warning` and appends "· offline, showing the cached run" (KI-7 step 1c). Its tooltip names the run id, its finish time and whether the data came from the browser cache or the network.
 - For the global version the aside keeps 560 px. Tables that need more width get a full-width drawer under the globe rather than a wider sidebar **(call)**.
 
 ## 4. Globe
