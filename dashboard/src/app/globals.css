@@ -85,7 +85,7 @@ html, body {
 .topbar-controls label { white-space: nowrap; }
 .topbar-controls button { white-space: nowrap; }
 .topbar-controls select { max-width: 112px !important; }
-@media (min-width: 1536px) { .topbar-controls select { max-width: 150px !important; } .topbar-controls input { width: 150px !important; } }
+@media (min-width: 1820px) { .topbar-controls select { max-width: 150px !important; } .topbar-controls input { width: 150px !important; } }
 
 /* type pass: top-bar controls read as one quiet row, sentence-case labels, 12 px values */
 .topbar-controls label { font-size: 11px; text-transform: capitalize; letter-spacing: 0; color: var(--muted); gap: 6px; }
@@ -115,3 +115,11 @@ html, body {
 .mobile-controls select { font-size: 13px; height: 30px; border-radius: 8px; }
 .mobile-controls [role="radiogroup"] button { font-size: 12px; text-transform: none; letter-spacing: 0; padding: 6px 10px; white-space: nowrap; }
 .mobile-controls input { font-size: 16px; width: 120px; }
+
+/* top bar: the long live text ("· updated 5h ago") and the UTC clock need ~260 px more;
+   show them only where the bar has that room, so nothing overlaps on 1536–1819 px screens */
+.topbar-wide { display: none; }
+@media (min-width: 1820px) { .topbar-wide { display: inline; } }
+@media (max-width: 1439.98px) { .topbar-controls select { max-width: 98px !important; } .topbar-controls input { width: 86px !important; } .topbar-controls { gap: 6px; } }
+@media (max-width: 1279.98px) { .topbar-controls select { max-width: 92px !important; } .topbar-controls input { width: 80px !important; } }
+@media (max-width: 1199.98px) { .topbar-controls select { max-width: 84px !important; } }

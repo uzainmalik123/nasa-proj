@@ -317,9 +317,9 @@ export default function Dashboard() {
             title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)} · from ${source === "cache" ? "the browser cache" : "the network"}` : undefined}
           >
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
-            {data ? (<>{live ? "live" : "stale"}<span className="hidden 2xl:inline"> · updated {fmtAge(age)}{pillNote}</span></>) : error ? "could not load data" : `loading ${progress[0]} of ${progress[1]} files`}
+            {data ? (<>{live ? "live" : "stale"}<span className="topbar-wide"> · updated {fmtAge(age)}{pillNote}</span></>) : error ? "could not load data" : `loading ${progress[0]} of ${progress[1]} files`}
           </div>
-          <span className="hidden 2xl:inline"><UtcClock now={now} /></span>
+          <span className="topbar-wide"><UtcClock now={now} /></span>
         </div>
       </header>
       <div className="relative flex min-h-0 flex-1">
