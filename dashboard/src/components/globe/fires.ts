@@ -57,3 +57,27 @@ export function fmtAcq(iso: string | null | undefined): string {
   if (!iso || iso.length < 16) return "–";
   return `${fmtDay(iso.slice(0, 10))} ${iso.slice(11, 16)} UTC`;
 }
+
+// F1 (spec §6.1 band 1): at world zoom the 0.25° bins line up on a visible grid, so a heatmap on
+// the same source carries the world view and crossfades into the dots by zoom 4.5 (the fly-to
+// zoom 5.2 shows exactly the KI-1 dots and tooltip). Stops are the risk ramp's own colours.
+export const HEAT_FADE_START = 2.5;
+export const HEAT_FADE_END = 4.5;
+/** Below this zoom the legend shows the heatmap ramp, at and above it the sample dots. */
+export const HEAT_LEGEND_ZOOM = 4;
+export const HEAT_COLOURS = ["rgba(154,52,18,0)", "#9a3412", "#ea580c", "#fbbf24", "#fef3c7"] as const;
+const HEAT_MAX_COUNT = 60;
+export const FIRE_HEAT_PAINT = {
+  "heatmap-weight": ["/", ["min", ["get", "count"], HEAT_MAX_COUNT], HEAT_MAX_COUNT] as ExpressionSpecification,
+  "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 2, 18, 4, 28] as ExpressionSpecification,
+  "heatmap-intensity": 0.55, // 1 saturated the Sahel band to flat cream at world zoom
+  "heatmap-color": [
+    "interpolate", ["linear"], ["heatmap-density"],
+    0, HEAT_COLOURS[0], 0.15, HEAT_COLOURS[1], 0.4, HEAT_COLOURS[2], 0.7, HEAT_COLOURS[3], 1, HEAT_COLOURS[4],
+  ] as ExpressionSpecification,
+  "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], HEAT_FADE_START, 0.9, HEAT_FADE_END, 0] as ExpressionSpecification,
+};
+/** The dots' inverse of the heatmap fade: 0 at 2.5 → `full` at 4.5. */
+export function fadeInDots(full: number): ExpressionSpecification {
+  return ["interpolate", ["linear"], ["zoom"], HEAT_FADE_START, 0, HEAT_FADE_END, full];
+}

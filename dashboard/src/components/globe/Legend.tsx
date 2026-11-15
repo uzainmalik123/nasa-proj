@@ -5,7 +5,9 @@ import {
   VARIABLE_LABEL, lowIsRing, riskColour, signed, slopeDigits, type Colouring,
 } from "./colour";
 import { GIBS_LAYERS, GIBS_MAX_STEP_BACK, type GibsValid } from "./gibs";
-import { FIRE_CELL_DEG, FIRE_FILL, FIRE_STROKE, fireDotRadius, fireSourceLabel, fmtAcq } from "./fires";
+import {
+  FIRE_CELL_DEG, FIRE_FILL, FIRE_STROKE, HEAT_COLOURS, HEAT_LEGEND_ZOOM, fireDotRadius, fireSourceLabel, fmtAcq,
+} from "./fires";
 import type { FiresFile } from "@/lib/types";
 
 const BAR_W = 176;
@@ -29,8 +31,8 @@ function pctLabel(v: number): string {
 const trendGradient = `linear-gradient(to right, ${P.s1} 0%, ${P.muted} 50%, ${P.s2} 100%)`;
 
 export default function Legend({
-  colouring, fires = null, gibs = null, zoom = 0,
-}: { colouring: Colouring; fires?: FiresFile | null; gibs?: GibsValid | null; zoom?: number }) {
+  colouring, fires = null, firesOn = true, gibs = null, zoom = 0,
+}: { colouring: Colouring; fires?: FiresFile | null; firesOn?: boolean; gibs?: GibsValid | null; zoom?: number }) {
   return (
     <div
       className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-[10px] text-muted backdrop-blur"
@@ -38,17 +40,38 @@ export default function Legend({
     >
       {colouring.kind === "risk" ? <RiskLegend c={colouring} ring={lowIsRing(zoom)} /> : <TrendLegend c={colouring} />}
       {gibs && <GibsRow g={gibs} />}
-      <FireRow fires={fires} />
+      {/* F1 band B: fires toggled off → the row stays, dimmed, and says so */}
+      <div className={firesOn ? undefined : "opacity-40"} data-fires-on={firesOn ? "true" : "false"}>
+        <FireRow fires={fires} zoom={zoom} />
+        {!firesOn && <div className="font-semibold uppercase tracking-[0.08em] text-ink-2">hidden</div>}
+      </div>
     </div>
   );
 }
 
 const FIRE_SAMPLES = [1, 10, 50];
+const heatGradient = `linear-gradient(to right, ${HEAT_COLOURS.join(", ")})`;
 
 /** KI-1: the dots are 0.25° cells, sized by count; say so and show the scale. */
-function FireRow({ fires }: { fires: FiresFile | null }) {
+function FireRow({ fires, zoom }: { fires: FiresFile | null; zoom: number }) {
+  // F1: below zoom 4 the globe draws the heatmap, so the legend shows its ramp
+  if (zoom < HEAT_LEGEND_ZOOM) {
+    return (
+      <div className="mt-2 border-t border-white/10 pt-2" data-fire-legend="heat">
+        <div className="flex items-center gap-2">
+          <span className="inline-block h-2 w-10 rounded-sm" style={{ backgroundImage: heatGradient }} />
+          <span>active fires · density of VIIRS detections, last 24 h</span>
+        </div>
+        {fires && (
+          <div className="mt-0.5 text-muted">
+            {fireSourceLabel(fires.source)} · FIRMS · newest {fmtAcq(fires.newest_acq)} · zoom in for cells
+          </div>
+        )}
+      </div>
+    );
+  }
   return (
-    <div className="mt-2 border-t border-white/10 pt-2">
+    <div className="mt-2 border-t border-white/10 pt-2" data-fire-legend="dots">
       <div className="flex items-center gap-2">
         <span className="flex items-center gap-1.5">
           {FIRE_SAMPLES.map((n) => (
@@ -155,7 +178,7 @@ function RiskLegend({ c, ring }: { c: Extract<Colouring, { kind: "risk" }>; ring
             <span className="text-muted">· {ring ? "ring when zoomed in" : "dot at the world zoom"}</span>
           </div>
           <div className="mt-0.5 text-muted">calibrated probability</div>
-          <div className="text-muted">ramp stops = today&apos;s 50 / 80 / 95 / 99th pct</div>
+          <div className="text-muted">ramp stops set 14 Nov · 50 / 80 / 95 / 99th pct</div>
           {c.hazard in CATEGORY_THRESHOLD_P && (
             <div className="text-muted">
               {(Object.entries(CATEGORY_THRESHOLD_P[c.hazard as "wildfire" | "rain"]) as [string, number][])

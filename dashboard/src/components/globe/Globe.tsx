@@ -17,12 +17,14 @@ import { fmtCount } from "@/lib/format";
 import type { FiresFile, Hazard, Mode, Place, RiskFile, TrendsFile, Variable } from "@/lib/types";
 import Legend from "./Legend";
 import GibsControl from "./GibsControl";
+import MapControls from "./MapControls";
 import {
   LOW_COLOUR, LOW_DOT_OPACITY, LOW_R_DOT, LOW_R_RING, LOW_RING_OPACITY, LOW_RING_WIDTH, LOW_ZOOM_DOT, LOW_ZOOM_RING,
   continentSet, hazardText, pickColouring, pointStates, trendText, type Colouring,
 } from "./colour";
 import {
-  FIRE_CELL_DEG, FIRE_DOT_RADIUS, FIRE_FILL, FIRE_GLOW_RADIUS, FIRE_STROKE, fireSourceLabel, fmtAcq, fmtCentre, fmtFrp,
+  FIRE_CELL_DEG, FIRE_DOT_RADIUS, FIRE_FILL, FIRE_GLOW_RADIUS, FIRE_HEAT_PAINT, FIRE_STROKE, fadeInDots, fireSourceLabel,
+  fmtAcq, fmtCentre, fmtFrp,
 } from "./fires";
 import {
   GIBS_LAYERS, clampGibsDate, gibsNewestDate, gibsTileUrl, resolveGibsDate, type GibsLayerKey, type GibsValid,
@@ -39,6 +41,7 @@ export const STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
 export const ZOOM_GLOBAL = 1.6;
 export const ZOOM_REGIONAL = 2.7;
 export const ZOOM_FLY_MIN = 5.2;
+const CENTER_WORLD: [number, number] = [20, 15];
 
 /** Pass a new object to fly again; identity change triggers the flight. */
 export interface FlyTarget {
@@ -74,6 +77,7 @@ const SRC_FIRES = "fires";
 const SRC_GIBS = "gibs";
 const L_PLACES = "places";
 const L_SELECTED = "places-selected";
+const L_FIRE_HEAT = "fires-heat";
 const L_FIRE_GLOW = "fires-glow";
 const L_FIRE_DOT = "fires-dot";
 const L_GIBS = "gibs";
@@ -184,6 +188,8 @@ export default function Globe(props: GlobeProps) {
   const [gibsValid, setGibsValid] = useState<GibsValid | null>(null);
   // view state: the legend swaps the low mark (dot / ring) with the zoom (KI-2)
   const [zoom, setZoom] = useState(ZOOM_GLOBAL);
+  // view state: F1 band B fires on/off toggle (heatmap + glow + dots)
+  const [firesOn, setFiresOn] = useState(true);
   const tipRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<MapState>({ map: null, ready: false, queue: [] });
   const latestRef = useRef<Latest | null>(null);
@@ -205,7 +211,7 @@ export default function Globe(props: GlobeProps) {
     const map = new MapLibreMap({
       container,
       style: STYLE_URL,
-      center: [20, 15],
+      center: CENTER_WORLD,
       zoom: ZOOM_GLOBAL,
       pitch: 0,
       maxPitch: 0,
@@ -259,7 +265,7 @@ export default function Globe(props: GlobeProps) {
         paint: {
           "circle-color": FIRE_FILL,
           "circle-radius": FIRE_GLOW_RADIUS,
-          "circle-opacity": 0.18,
+          "circle-opacity": fadeInDots(0.18),
           "circle-blur": 1,
         },
       });
@@ -274,8 +280,13 @@ export default function Globe(props: GlobeProps) {
           "circle-radius": FIRE_DOT_RADIUS,
           "circle-stroke-color": FIRE_STROKE,
           "circle-stroke-width": 1.2,
+          "circle-opacity": fadeInDots(1),
+          "circle-stroke-opacity": fadeInDots(1),
         },
       });
+      // F1: density view at world zoom, inserted under the places (and so under the fire glow and
+      // dots) so the hazard dots stay readable; no hit-test, hovering the heatmap does nothing
+      map.addLayer({ id: L_FIRE_HEAT, type: "heatmap", source: SRC_FIRES, paint: FIRE_HEAT_PAINT }, L_PLACES);
 
       // hover tooltip + click, driven straight off the DOM (no React state).
       // One map-level handler queries both hit layers; a place wins over a fire
@@ -378,6 +389,18 @@ export default function Globe(props: GlobeProps) {
     });
   }, [fires]);
 
+  useEffect(() => {
+    runWhenReady(stateRef.current, (map) => {
+      for (const id of [L_FIRE_HEAT, L_FIRE_GLOW, L_FIRE_DOT]) {
+        map.setLayoutProperty(id, "visibility", firesOn ? "visible" : "none");
+      }
+    });
+  }, [firesOn]);
+
+  // ---- zoom buttons (F1 band B) --------------------------------------------
+  const zoomBy = (d: number) => stateRef.current.map?.easeTo({ zoom: stateRef.current.map.getZoom() + d, duration: 300 });
+  const resetView = () => stateRef.current.map?.flyTo({ center: CENTER_WORLD, zoom: ZOOM_GLOBAL, speed: 1.2 });
+
   // ---- fly-to -------------------------------------------------------------
   useEffect(() => {
     if (!flyTo) return;
@@ -430,7 +453,17 @@ export default function Globe(props: GlobeProps) {
         className="pointer-events-none absolute z-10 rounded-lg border border-white/10 bg-black/80 px-2.5 py-1.5 text-[11px] leading-snug backdrop-blur"
         style={{ display: "none" }}
       />
-      <Legend colouring={colouring} fires={fires} zoom={zoom} gibs={gibsLayer && gibsValid?.key === gibsLayer ? gibsValid : null} />
+      <Legend
+        colouring={colouring} fires={fires} firesOn={firesOn} zoom={zoom}
+        gibs={gibsLayer && gibsValid?.key === gibsLayer ? gibsValid : null}
+      />
+      <MapControls
+        firesOn={firesOn}
+        onZoomIn={() => zoomBy(1)}
+        onZoomOut={() => zoomBy(-1)}
+        onReset={resetView}
+        onToggleFires={() => setFiresOn((v) => !v)}
+      />
       {onGibsChange && <GibsControl layer={gibsLayer} date={gibsDate} valid={gibsValid} onChange={onGibsChange} />}
     </div>
   );
