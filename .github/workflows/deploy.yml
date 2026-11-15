@@ -23,7 +23,8 @@ jobs:
     timeout-minutes: 20
     env:
       NEXT_PUBLIC_DATA_URL: https://raw.githubusercontent.com/${{ github.repository }}/data/out
-      NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+      # custom domain serves at the root; was /${{ github.event.repository.name }} for github.io
+      NEXT_PUBLIC_BASE_PATH: ""
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
