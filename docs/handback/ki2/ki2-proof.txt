@@ -1,0 +1,23 @@
+shot ki2-globe-global
+legend: WILDFIRE · NEXT 14 DAYS | risk assessment · valid 2026-11-15 → 2026-11-29 | 0 | 15 | 59 | 92 | 100 % | low · under 15 % | · dot at the world zoom | calibrated probability | ramp stops = today's 50 / 80 / 95 / 99th pct | elevated ≥ 30 % · high ≥ 60 % · extreme ≥ 90 % | active fire detections (FIRMS) | 0.25° cells · 1 / 10 / 50 detections · hover for the count | VIIRS NOAA-21 · last 24 h · newest 15 Nov 01:53 UTC
+ok   legend has 'low · under 15 %'
+ok   legend low mark at the world zoom is a dot (got dot)
+shot ki2-legend-global
+world hover: Yaoundé CM | 12% · low @ 482 546
+ok   low place at the world zoom is a visible mark (max luminance 248 within 3 px, need ≥ 140)
+shot ki2-hover-global
+legend (category today): WILDFIRE · CATEGORY TODAY | risk assessment · valid 2026-11-15 → 2026-11-29 | low | elevated | high | extreme | today's category · next 14 days shows the probability | active fire detections (FIRMS) | 0.25° cells · 1 / 10 / 50 detections · hover for the count | VIIRS NOAA-21 · last 24 h · newest 15 Nov 01:53 UTC
+ok   category legend's low swatch is the low mark
+shot ki2-legend-category
+ok   legend low mark after the fly-to is a ring (got ring)
+shot ki2-legend-zoomed
+ok   ring is hollow: centre luminance 12 (need < 90)
+ok   ring is visible: max luminance 255 at 2.5–4.5 px (need ≥ 140)
+zoomed hover: São Tomé ST | 2% · low
+shot ki2-hover-zoomed
+shot ki2-globe-zoomed
+shot ki2-globe-pakistan
+console errors: 0 []
+ok   no console errors
+
+all checks passed

@@ -1,8 +1,8 @@
 // Bottom-left legend for the globe. Pure: everything comes from `colouring`.
 import { P, RISK_STOPS } from "@/lib/palette";
 import {
-  CATEGORIES, CATEGORY_THRESHOLD_P, CATEGORY_V, CONTINUOUS_HAZARD, HAZARD_LABEL, VARIABLE_LABEL, riskColour, signed, slopeDigits,
-  type Colouring,
+  CATEGORIES, CATEGORY_THRESHOLD_P, CATEGORY_V, CONTINUOUS_HAZARD, HAZARD_LABEL, LOW_COLOUR, LOW_RING_WIDTH, RISK_FLOOR,
+  VARIABLE_LABEL, lowIsRing, riskColour, signed, slopeDigits, type Colouring,
 } from "./colour";
 import { GIBS_LAYERS, GIBS_MAX_STEP_BACK, type GibsValid } from "./gibs";
 import { FIRE_CELL_DEG, FIRE_FILL, FIRE_STROKE, fireDotRadius, fireSourceLabel, fmtAcq } from "./fires";
@@ -29,14 +29,14 @@ function pctLabel(v: number): string {
 const trendGradient = `linear-gradient(to right, ${P.s1} 0%, ${P.muted} 50%, ${P.s2} 100%)`;
 
 export default function Legend({
-  colouring, fires = null, gibs = null,
-}: { colouring: Colouring; fires?: FiresFile | null; gibs?: GibsValid | null }) {
+  colouring, fires = null, gibs = null, zoom = 0,
+}: { colouring: Colouring; fires?: FiresFile | null; gibs?: GibsValid | null; zoom?: number }) {
   return (
     <div
       className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-[10px] text-muted backdrop-blur"
       style={{ minWidth: BAR_W + 24, maxWidth: BAR_W + 64 }}
     >
-      {colouring.kind === "risk" ? <RiskLegend c={colouring} /> : <TrendLegend c={colouring} />}
+      {colouring.kind === "risk" ? <RiskLegend c={colouring} ring={lowIsRing(zoom)} /> : <TrendLegend c={colouring} />}
       {gibs && <GibsRow g={gibs} />}
       <FireRow fires={fires} />
     </div>
@@ -106,7 +106,22 @@ function GibsRow({ g }: { g: GibsValid }) {
   );
 }
 
-function RiskLegend({ c }: { c: Extract<Colouring, { kind: "risk" }> }) {
+/** KI-2: the low mark as the globe draws it right now: a filled dot at the world zoom, a ring zoomed in. */
+function LowMark({ ring }: { ring: boolean }) {
+  return (
+    <span
+      data-low-mark={ring ? "ring" : "dot"}
+      className="inline-block rounded-full"
+      style={
+        ring
+          ? { width: 9, height: 9, border: `${LOW_RING_WIDTH}px solid ${LOW_COLOUR}`, opacity: 0.85 }
+          : { width: 6, height: 6, background: LOW_COLOUR, opacity: 0.9, boxShadow: "0 0 0 1px rgba(0,0,0,0.6)" }
+      }
+    />
+  );
+}
+
+function RiskLegend({ c, ring }: { c: Extract<Colouring, { kind: "risk" }>; ring: boolean }) {
   // M-MODE+URL: "now" = the category each place is in today, "next14" = the forecast probability
   const title = `${HAZARD_LABEL[c.hazard]} · ${c.mode === "now" ? "category today" : "next 14 days"}`;
   const sub = c.validFrom && c.validTo ? `risk assessment · valid ${c.validFrom} → ${c.validTo}` : "risk assessment";
@@ -134,6 +149,11 @@ function RiskLegend({ c }: { c: Extract<Colouring, { kind: "risk" }> }) {
               </span>
             ))}
           </div>
+          <div className="mt-1 flex items-center gap-1.5 text-ink-2">
+            <LowMark ring={ring} />
+            low · under {Math.round(RISK_FLOOR * 100)} %
+            <span className="text-muted">· {ring ? "ring when zoomed in" : "dot at the world zoom"}</span>
+          </div>
           <div className="mt-0.5 text-muted">calibrated probability</div>
           <div className="text-muted">ramp stops = today&apos;s 50 / 80 / 95 / 99th pct</div>
           {c.hazard in CATEGORY_THRESHOLD_P && (
@@ -149,14 +169,14 @@ function RiskLegend({ c }: { c: Extract<Colouring, { kind: "risk" }> }) {
         <div className="flex gap-2.5">
           {CATEGORIES.map((cat) => (
             <span key={cat} className="flex items-center gap-1">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{
-                  background: cat === "low" ? P.muted : riskColour(CATEGORY_V[cat]),
-                  opacity: cat === "low" ? 0.6 : 1,
-                  boxShadow: "0 0 0 1px rgba(0,0,0,0.6)",
-                }}
-              />
+              {cat === "low" ? (
+                <LowMark ring={ring} />
+              ) : (
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ background: riskColour(CATEGORY_V[cat]), boxShadow: "0 0 0 1px rgba(0,0,0,0.6)" }}
+                />
+              )}
               {cat}
             </span>
           ))}
