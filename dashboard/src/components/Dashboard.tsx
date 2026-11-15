@@ -317,7 +317,7 @@ export default function Dashboard() {
             title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)} · from ${source === "cache" ? "the browser cache" : "the network"}` : undefined}
           >
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
-            {data ? (<>{live ? "live" : "stale"}<span className="topbar-wide"> · updated {fmtAge(age)}{pillNote}</span></>) : error ? "could not load data" : `loading ${progress[0]} of ${progress[1]} files`}
+            {data ? (<>{live ? "live" : "stale"}<span className="topbar-wide"> · updated {fmtAge(age)}{pillNote}</span></>) : error ? "error" : (<>loading {progress[0]}/{progress[1]}<span className="topbar-wide"> files</span></>)}
           </div>
           <span className="topbar-wide"><UtcClock now={now} /></span>
         </div>
@@ -365,7 +365,7 @@ export default function Dashboard() {
           </div>
 
           {/* controls, PRD §5: search (S3-B) · mode · hazard · trend variable · continent; imagery toggles + slider sit on the globe (M-GIBS) */}
-          <div className="mobile-controls flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-white/10 bg-black/65 px-2.5 py-1.5 backdrop-blur">
+          <div className="mobile-controls flex max-w-full flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border border-white/10 bg-black/65 px-2.5 py-1.5 backdrop-blur">
             <Search places={places} onPick={(i) => select(i, true)} />
             <Toggle
               label="mode"
