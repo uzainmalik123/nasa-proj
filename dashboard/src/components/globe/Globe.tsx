@@ -13,10 +13,14 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAPLIBRE_WORKER_URL } from "@/lib/maplibre-worker";
 import { P } from "@/lib/palette";
+import { fmtCount } from "@/lib/format";
 import type { FiresFile, Hazard, Mode, Place, RiskFile, TrendsFile, Variable } from "@/lib/types";
 import Legend from "./Legend";
 import GibsControl from "./GibsControl";
 import { continentSet, hazardText, pickColouring, pointStates, trendText, type Colouring } from "./colour";
+import {
+  FIRE_CELL_DEG, FIRE_DOT_RADIUS, FIRE_FILL, FIRE_GLOW_RADIUS, FIRE_STROKE, fireSourceLabel, fmtAcq, fmtCentre, fmtFrp,
+} from "./fires";
 import {
   GIBS_LAYERS, clampGibsDate, gibsNewestDate, gibsTileUrl, resolveGibsDate, type GibsLayerKey, type GibsValid,
 } from "./gibs";
@@ -134,6 +138,7 @@ interface Latest {
   places: Place[];
   risk: RiskFile | null;
   trends: TrendsFile | null;
+  fires: FiresFile | null;
   colouring: Colouring;
   onSelect: (i: number | null) => void;
 }
@@ -165,7 +170,7 @@ export default function Globe(props: GlobeProps) {
   );
 
   useEffect(() => {
-    latestRef.current = { places, risk, trends, colouring, onSelect };
+    latestRef.current = { places, risk, trends, fires, colouring, onSelect };
   });
 
   // ---- create the map once ------------------------------------------------
@@ -230,8 +235,8 @@ export default function Globe(props: GlobeProps) {
         type: "circle",
         source: SRC_FIRES,
         paint: {
-          "circle-color": "#fff7ed",
-          "circle-radius": ["interpolate", ["linear"], ["get", "count"], 1, 6, 60, 18],
+          "circle-color": FIRE_FILL,
+          "circle-radius": FIRE_GLOW_RADIUS,
           "circle-opacity": 0.18,
           "circle-blur": 1,
         },
@@ -240,39 +245,57 @@ export default function Globe(props: GlobeProps) {
         id: L_FIRE_DOT,
         type: "circle",
         source: SRC_FIRES,
+        // small cells draw over big ones so a single detection next to a 100-cell stays hittable
+        layout: { "circle-sort-key": ["-", 0, ["get", "count"]] },
         paint: {
-          "circle-color": "#fff7ed",
-          "circle-radius": ["interpolate", ["linear"], ["get", "count"], 1, 2.2, 60, 5],
-          "circle-stroke-color": "#d03b3b",
+          "circle-color": FIRE_FILL,
+          "circle-radius": FIRE_DOT_RADIUS,
+          "circle-stroke-color": FIRE_STROKE,
           "circle-stroke-width": 1.2,
         },
       });
 
-      // hover tooltip + click, driven straight off the DOM (no React state)
+      // hover tooltip + click, driven straight off the DOM (no React state).
+      // One map-level handler queries both hit layers; a place wins over a fire
+      // cell under the same pixel (places are clickable, cells are not, KI-1).
       const tip = tipRef.current;
       const hide = () => {
         map.getCanvas().style.cursor = "";
         if (tip) tip.style.display = "none";
       };
+      const line = (text: string, className: string) => {
+        const el = document.createElement("div");
+        el.className = className;
+        el.textContent = text;
+        return el;
+      };
       const show = (e: MapMouseEvent) => {
-        const f = map.queryRenderedFeatures(e.point, { layers: [L_PLACES] })[0];
         const l = latestRef.current;
-        const i = f ? Number(f.id) : -1;
-        const place = l?.places[i];
-        if (!f || !tip || !l || !place) { hide(); return; }
-        map.getCanvas().style.cursor = "pointer";
+        if (!tip || !l) { hide(); return; }
+        const hits = map.queryRenderedFeatures(e.point, { layers: [L_PLACES, L_FIRE_DOT] });
+        const placeHit = hits.find((f) => f.layer.id === L_PLACES);
+        const fireHit = hits.find((f) => f.layer.id === L_FIRE_DOT);
+        const i = placeHit ? Number(placeHit.id) : -1;
+        const place = l.places[i];
         tip.replaceChildren();
-        const name = document.createElement("div");
-        name.className = "text-ink";
-        name.textContent = `${place.name} `;
-        const country = document.createElement("span");
-        country.className = "text-muted";
-        country.textContent = place.country;
-        name.appendChild(country);
-        const value = document.createElement("div");
-        value.className = "font-mono text-ink-2";
-        value.textContent = valueText(l, i);
-        tip.append(name, value);
+        if (place) {
+          map.getCanvas().style.cursor = "pointer";
+          const name = line(`${place.name} `, "text-ink");
+          const country = document.createElement("span");
+          country.className = "text-muted";
+          country.textContent = place.country;
+          name.appendChild(country);
+          tip.append(name, line(valueText(l, i), "font-mono text-ink-2"));
+        } else if (fireHit && l.fires) {
+          map.getCanvas().style.cursor = "";
+          const { count, frp } = fireHit.properties as { count: number; frp: number };
+          const [lon, lat] = (fireHit.geometry as GeoJSON.Point).coordinates;
+          tip.append(
+            line(`${fmtCount(count)} active fire ${count === 1 ? "detection" : "detections"} · ${FIRE_CELL_DEG}° cell`, "text-ink"),
+            line(`max FRP ${fmtFrp(frp)} MW · centre ${fmtCentre(lon, lat)}`, "font-mono text-ink-2"),
+            line(`observation · ${fireSourceLabel(l.fires.source)} · newest ${fmtAcq(l.fires.newest_acq)}`, "text-muted"),
+          );
+        } else { hide(); return; }
         const { x, y } = e.point;
         const flip = x > container.clientWidth * 0.62;
         tip.style.left = flip ? "auto" : `${x + 12}px`;
@@ -280,8 +303,8 @@ export default function Globe(props: GlobeProps) {
         tip.style.top = `${y - 10}px`;
         tip.style.display = "block";
       };
-      map.on("mousemove", L_PLACES, show);
-      map.on("mouseleave", L_PLACES, hide);
+      map.on("mousemove", show);
+      map.on("mouseout", hide);
       map.on("click", L_PLACES, (e: MapLayerMouseEvent) => {
         const f = e.features?.[0];
         if (f) latestRef.current?.onSelect(Number(f.id));
@@ -381,10 +404,11 @@ export default function Globe(props: GlobeProps) {
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
       <div
         ref={tipRef}
+        role="tooltip"
         className="pointer-events-none absolute z-10 rounded-lg border border-white/10 bg-black/80 px-2.5 py-1.5 text-[11px] leading-snug backdrop-blur"
         style={{ display: "none" }}
       />
-      <Legend colouring={colouring} gibs={gibsLayer && gibsValid?.key === gibsLayer ? gibsValid : null} />
+      <Legend colouring={colouring} fires={fires} gibs={gibsLayer && gibsValid?.key === gibsLayer ? gibsValid : null} />
       {onGibsChange && <GibsControl layer={gibsLayer} date={gibsDate} valid={gibsValid} onChange={onGibsChange} />}
     </div>
   );

@@ -1,0 +1,12 @@
+shot ki1-globe-global
+legend: WILDFIRE · NEXT 14 DAYS | risk assessment · valid 2026-11-14 → 2026-11-28 | 0 | 15 | 59 | 92 | 100 % | calibrated probability | ramp stops = today's 50 / 80 / 95 / 99th pct | elevated ≥ 30 % · high ≥ 60 % · extreme ≥ 90 % | active fire detections (FIRMS) | 0.25° cells · 1 / 10 / 50 detections · hover for the count | VIIRS NOAA-21 · last 24 h · newest 14 Nov 19:28 UTC
+shot ki1-legend
+global hover: 4 active fire detections · 0.25° cell | max FRP 21 MW · centre 33.9°S 19.9°E | observation · VIIRS NOAA-21 · newest 14 Nov 19:28 UTC @ 521,684 (skipped 0 place hovers)
+cursor on fire cell: (default)
+shot ki1-hover-global
+tooltip after moving off: null
+hover on the selected place: Lagos NG | 19% · low
+zoomed hover: 1 active fire detection · 0.25° cell | max FRP 2.3 MW · centre 6.4°N 3.1°E | observation · VIIRS NOAA-21 · newest 14 Nov 19:28 UTC @ 509,501 (skipped 8 place hovers)
+shot ki1-hover-zoomed
+shot ki1-globe-zoomed
+console errors: 0
