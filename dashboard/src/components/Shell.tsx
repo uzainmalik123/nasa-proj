@@ -13,7 +13,7 @@ export function BrandBlock() {
       <span className="brand-mark" aria-hidden />
       <div className="leading-tight">
         <div className="text-[14px] font-semibold tracking-[-0.01em] text-ink">Earth System Trend Detective</div>
-        <div className="text-[10px] text-muted">NASA FIRMS · POWER · GIBS · forecast Open-Meteo</div>
+        <div className="hidden text-[10px] text-muted 2xl:block">NASA FIRMS · POWER · GIBS · forecast Open-Meteo</div>
       </div>
     </div>
   );

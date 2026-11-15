@@ -36,6 +36,7 @@ Keyboard: `/` focuses search and Esc clears the selection. Both already worked o
 - The four-kinds sentence stays on the Sources tab. The footer carries the safety statement plus a short version of the four-kinds line.
 
 ## NOT done
+- After merging `origin/main` (PR #29/#30, imagery select in the top bar), the bottom-right imagery bar overlaps the MapLibre attribution pill at 1920×1080. That arrived with #30 after my walk, so I left it to that session rather than move their component.
 - The legend still grows 15 px when the user zooms past the dots/heatmap threshold. That is user-initiated, not a load jump.
 - Phone layout (L8) was not reworked. I only checked that the safety line shows there.
 - The before/after for the live deploy is only as fresh as the deploy run that main triggers. Re-run `node docs/handback/polish/audit.mjs https://globalalert.earth <dir>` once it is green.
