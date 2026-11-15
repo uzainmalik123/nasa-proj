@@ -13,8 +13,8 @@ Audience is unchanged from the PRD: a judge with four minutes, then disaster man
 ## 2. Goals, non-goals, anti-goals
 
 **Goals**
-- The globe is the hero: it owns the full viewport minus the left column and top bar, and nothing sits on it except the legend, one place card, and the dock.
-- One section at a time. Six tabs; the active tab's content is the only list on screen.
+- The globe is the hero: it owns the full viewport minus the left column and top bar, and nothing sits on it except the legend, the place panel when a place is selected, and the dock.
+- One section at a time. Five tabs; the active tab's content is the only list on screen. The selected place gets its own floating panel, not a tab.
 - Top bar and bottom dock carry the controls and headline numbers so the stage edges are not empty.
 - Colour applied with restraint: orange and yellow only where they encode risk or fire; grey for the rest.
 - Every number, caption and control that exists today still exists somewhere. Nothing from the PRD's H-items is dropped.
@@ -27,7 +27,7 @@ Audience is unchanged from the PRD: a judge with four minutes, then disaster man
 
 **Anti-goals**
 - Anything that hides the hazards and trends tables behind more than one click from first paint. The Risk tab is open on load.
-- Floating panels covering the globe's points. Lists live in the column, never over the map.
+- Floating lists covering the globe's points. Lists live in the column, never over the map. The one floating panel is the place panel (§5.3), a detail view that exists only while a place is selected, and the globe pads itself so the selected place is never under it.
 - Decorative motion. The dock's play button and the pulse on the newest alert are the only things that move on their own.
 
 ## 3. Constraints
@@ -59,6 +59,10 @@ For the column's width (raised by the builder check: the mockup's 300 px cannot 
 - Sideways scroll: rejected.
 - **As wide as the data needs and no wider, about 460 px, every column kept.** Chosen. The user's rule: fit the whole data, don't overshadow the globe.
 
+For the selected place:
+- A Place tab in the column, with a small summary card on the stage: the first draft.
+- **The whole place panel as a floating panel top-right of the stage, shown only while a place is selected; no Place tab.** Chosen by the user after approval, 2026-11-15: a judge reads a city's full story while the Risk table stays open, and it matches the mobile sheet one for one.
+
 ## 5. The layout
 
 ```
@@ -67,8 +71,9 @@ For the column's width (raised by the builder check: the mockup's 300 px cannot 
 │   NASA FIRMS · POWER · GIBS · Open-Meteo   [Rainfall▾] [World▾] [Imagery: none▾]      │
 │                                                          ● LIVE · updated 3h ago  08:58 UTC │
 ├──────────── left column · ~460 px ───────────┬──────────── stage · the rest ────────────┤
-│ [Risk] [Trends] [Place] [Alerts] [Regions]   │ ┌legend┐                     ┌place card┐ │
-│ [Sources]        icon + label, active underlined │ └──────┘                     └──────────┘ │
+│ [Risk] [Trends] [Alerts] [Regions] [Sources] │ ┌legend┐                    ┌place panel ┐ │
+│        icon + label, active underlined       │ └──────┘                    │ (selected  │ │
+│                                              │                             │  city only)│ │
 │ ─────────────────────────────────────────── │                                            │
 │ active section's content, scrolls inside     │               globe canvas                 │
 │ (hazards table + movers when tab = Risk)     │                                            │
@@ -92,7 +97,7 @@ Right: the live/stale pill exactly as today, then a mono UTC clock `YYYY-MM-DD H
 
 The width is set by the data, not the mockup: the hazards table keeps rank, place, country, value with ramp bar, hindcast sparkline, Δ 7d, category and population; the trends table keeps all of its columns; `Movers` stays two tables side by side; the place panel keeps its four hazard cards in a row. Measure the widest tab once built and set the column to that, then stop. It must never grow past ~480 px: at 1600 px wide the globe keeps ≥ 1100 px, against 1040 px boxed in today.
 
-**Tab strip.** Six tabs in one row, equal width, each an icon (lucide-react, 14 px **(call)**: `flame`, `trending-down`, `map-pin`, `bell`, `globe`, `database`) above a 9 px label. Active tab: `text-ink`, icon tinted accent at 20 % with an accent border, a 2 px accent underline. Inactive: `text-muted`. No badges, no figures. Keyboard: tabs are `role="tab"`, arrow keys move, `1`–`6` jump **(call)**.
+**Tab strip.** Five tabs in one row, equal width, each an icon (lucide-react, 14 px **(call)**: `flame`, `trending-down`, `bell`, `globe`, `database`) above a 9 px label. Active tab: `text-ink`, icon tinted accent at 20 % with an accent border, a 2 px accent underline. Inactive: `text-muted`. No badges, no figures. Keyboard: tabs are `role="tab"`, arrow keys move, `1`–`5` jump **(call)**.
 
 Tabs and what each holds (every component exists today; it moves, it is not rewritten):
 
@@ -100,15 +105,14 @@ Tabs and what each holds (every component exists today; it moves, it is not rewr
 |---|---|---|
 | Risk | hazards table (takes the remaining height, scrolls inside), movers pinned under it as a compact top-5 up / top-5 down so both are on screen without scrolling **(call)** | `HazardsTable`, `Movers` |
 | Trends | trends table (full height) | `TrendsTable` |
-| Place | the selected place's whole panel; the empty state when nothing is selected | `PlacePanel` |
 | Alerts | feed | `Feed` |
 | Regions | continent bars and small multiples | `Continents` |
 | Sources | the context sentence, freshness, honesty, sources table, disclaimer footer | `Freshness`, `Honesty`, `Sources`, footer |
 
 Rules:
 - Risk tab is open on first paint. `mode === "now"` no longer reorders tables; it still switches the hazard cards' headline and the globe colouring as today.
-- Selecting a place (row click, globe click, alert click, search pick) switches to the Place tab **(call)**. Escape clears the selection and returns to the tab that was open before **(call)**.
-- Picking an alert still sets hazard and flies the globe (DESIGN.md §4), then opens Place.
+- Selecting a place (row click, globe click, alert click, search pick) opens the place panel on the stage (§5.3); the column's tab does not change. Escape, the panel's ✕, or clicking empty globe clears the selection and closes it **(call)**.
+- Picking an alert still sets hazard and flies the globe (DESIGN.md §4), then opens the place panel.
 - The region filter (continent) applies to every tab as today.
 
 **Column footer** (pinned, 1 px `border` above): one row of source status dots, 9 px: `FIRMS 3h · POWER 1d · Open-Meteo 9h · 6/6 gates`, green/amber/red by `freshness.json` status, mono ages. Clicking it opens the Sources tab. This replaces the "places on watch" KPI's gate count.
@@ -121,7 +125,13 @@ The globe fills the stage. `Globe.tsx` is unchanged except: the GIBS chip row an
 
 **Legend** (top-left, glass): exactly today's `Legend` component, moved from bottom-left.
 
-**Place card** (top-right, glass, 220 px wide, only when a place is selected) **(call)**: place name, country, population; the active hazard's headline (22 px mono: probability or category) with the category chip; the first sentence of `risk.text[place][hazard]`; a 34 px fire-weather forecast sparkline from `fwi_forecast` (wildfire only); a "details" link that opens the Place tab. It is a summary; the full charts stay in the column.
+**Place panel** (top-right, glass, only while a place is selected). This is today's whole `PlacePanel`, not a summary: header with name, country, population, coordinates and ✕; the trend chart for the chosen variable with the other variables as switchable chips; the three anomaly series against the place's own normal; the four hazard cards with probability / severity / exposure / confidence; the SHAP driver bars for the picked hazard; the sentence. It moves out of the column into its own floating panel so a judge can read a city's full story while the Risk table stays open on the left. The user chose this over a Place tab, 2026-11-15.
+
+- Size: 420 px wide **(call)**, the width the hazard-card row and the trend chart's 90-day inset already need; top 14 px, right 14 px, bottom stops 14 px above the dock; scrolls inside, thin scrollbar. The same glass recipe as the legend and dock.
+- The globe keeps the selected place visible: while the panel is open, MapLibre's `padding.right` is set to the panel width plus the inset so `flyTo` centres the city in the uncovered part of the stage **(call)**; when it closes, padding returns to 0 with an `easeTo` so the view does not jump.
+- The legend keeps top-left; the hover tooltip is unchanged; the dock is unaffected.
+- Empty state: none. When nothing is selected there is no panel, and the column's Risk tab is the obvious next click. The old "click a row, a globe point or an alert to see…" prompt moves to the Sources tab's header line **(call)**.
+- Below 1280 px of viewport width the panel takes the full stage height and the dock hides behind it until it closes **(call)**; under 768 px the mobile sheet (§5.5) replaces it.
 
 **Hover tooltip** on points: unchanged.
 
@@ -174,7 +184,7 @@ state 1 · idle              state 2 · city tapped          state 3 · ≡ tapp
 
 - **State 1.** Top bar as a glass pill: ≡ (drawer), orange dot, short title "Trend Detective", live dot, ⌕ (search). Under it a horizontally scrolling chip row with the same controls as the desktop top bar (mode, hazard, trend, region, imagery). The globe fills the rest. The bottom carries only the timeline as a one-line glass pill **(call: kept because the user asked earlier for the slider to stay visible)**. No gauges on mobile; their numbers are in the Sources tab and the Risk tab header.
 - **State 2.** Tapping a globe point, a search result or a drawer row: the stage shrinks to the top ~46 % of the screen, the globe flies so the city sits at the centre of the visible half, and a sheet rises to ~54 %. Sheet contents top to bottom: grab handle; place name, country, population, coordinates, with the active hazard's headline (17 px mono) and category chip at the right and ✕; the one-line driver sentence; four hazard cards in a row (hazard-coloured left border, 12 px mono value); the fire-weather forecast curve; the SHAP driver bars; the timeline docked into the sheet's bottom edge. Dragging the sheet up reveals the rest of today's `PlacePanel` (trend chart with variable chips, the three anomaly series, the sentence). ✕ or swipe-down returns to state 1 and clears the selection; the globe animates back to full height.
-- **State 3.** ≡ opens a drawer from the left at 74 % width over a 45 % scrim. It is the desktop column re-flowed: the tab strip (icon + label) with **five** tabs, Risk, Trends, Alerts, Regions, Sources; no Place tab, because the sheet is the place view **(call)**. Content is the same components as desktop in their column layout; the hazards table hides its sparkline and population columns under 400 px wide **(call)**, which is the only place the "whole data visible" rule bends, and those two values are in the sheet. The source-status strip is pinned at the drawer's bottom. Tapping a row closes the drawer, flies the globe and opens the sheet. Tapping the scrim or swiping left closes it.
+- **State 3.** ≡ opens a drawer from the left at 74 % width over a 45 % scrim. It is the desktop column re-flowed: the tab strip (icon + label) with **five** tabs, Risk, Trends, Alerts, Regions, Sources; no Place tab, the same five as desktop; the sheet is the place view. Content is the same components as desktop in their column layout; the hazards table hides its sparkline and population columns under 400 px wide **(call)**, which is the only place the "whole data visible" rule bends, and those two values are in the sheet. The source-status strip is pinned at the drawer's bottom. Tapping a row closes the drawer, flies the globe and opens the sheet. Tapping the scrim or swiping left closes it.
 - Transitions: sheet and drawer 240 ms ease-out; the stage resize and the fly-to run together so the city lands centred as the sheet finishes **(call)**. Reduced-motion users get instant state changes.
 - URL state is identical to desktop; `tab=` maps to the drawer's tab and opens it on load only if the URL names one.
 - Touch targets ≥ 44 px on the tab strip, chips, ✕, play button and knob. The timeline knob gets a 28 px invisible hit area.
@@ -218,7 +228,7 @@ State on 2026-11-15 (s3-globe, KI-1 done): the fire cells have a hover tooltip (
 ## 8. Motion
 
 - Tab switch: content cross-fades 120 ms **(call)**. Nothing slides.
-- Place card: fades in 150 ms on selection.
+- Place panel: fades in 150 ms on selection; the globe's padding change eases over the same 150 ms.
 - Dock play: steps the day every 650 ms; the globe recolours via feature-state without animation.
 - Newest alert pulse and fly-to: unchanged.
 - Nothing animates on load.
@@ -239,9 +249,9 @@ This section is the tracker. The work is split across sessions; each session tak
 
 | ID | Package | Owner | Depends on | Status |
 |---|---|---|---|---|
-| L1 | Left column with the six-tab strip; move the eleven sections into tabs; column footer with source dots; KPI tiles removed; column width measured and set (§5.2); `tab` in state and URL; `walk.mjs` rewritten; `lucide-react` added | S4 | – | open |
+| L1 | Left column with the five-tab strip; move the eleven sections into tabs; column footer with source dots; KPI tiles removed; column width measured and set (§5.2); `tab` in state and URL; `walk.mjs` rewritten; `lucide-react` added | S4 | – | open |
 | L2 | Top bar (§5.1): brand + source strip, controls moved up, imagery select back in the bar, live pill, UTC clock; title block and floating control panel removed from the globe | S4 | L1 | open |
-| L3 | Stage furniture (§5.3): legend to top-left, place card top-right, `GibsControl` removed from the globe | S3 | L2 | open |
+| L3 | Stage furniture (§5.3): legend to top-left, the full place panel floating top-right with globe padding on open/close, `GibsControl` removed from the globe | S3 + S4 | L2 | open |
 | L4 | Dock gauges (§5.4 gauges table): ring component, six tiles, region filter, tooltips | S4 | L1 | open |
 | L5 | Dock timeline (§5.4 timeline): track, play, `day` in state and URL, globe recolour from `history` / `fwi_forecast`, GIBS date follows the day, `date=` folded into `day=` | S3 | L3, L4 | open |
 | L6 | Colour usage cleanup (§6 bullets): ramp-coloured bars, zero-delta chips muted, sparklines without fill, green only on live/gates/hit-rate, one glass recipe, captions to the Sources tab (§7) | S4 | L1 | open |
