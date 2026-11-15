@@ -34,6 +34,13 @@ import TrendsTable from "./panels/TrendsTable";
 
 const Globe = dynamic(() => import("./globe/Globe"), { ssr: false });
 
+/** KI-18 interim: below `lg` one of the two halves shows at a time, switched from a bottom bar. */
+type MobileView = "globe" | "panels";
+/** `?view=panels` opens the phone layout on the panels (initial state only; not written back). */
+function readView(): MobileView {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "panels" ? "panels" : "globe";
+}
+
 /** What colours the globe: the selected hazard (default) or the selected trend variable. */
 export type Lens = "hazard" | "trend";
 
@@ -130,6 +137,7 @@ export default function Dashboard() {
   const [source, setSource] = useState<DataSource | null>(null);
   const [probe, setProbe] = useState<ProbeState>("checking");
   const [s, setS] = useState<AppState>(readUrl);
+  const [view, setView] = useState<MobileView>(readView);
   const now = useNow();
   const dataRef = useRef<Data | null>(null);
 
@@ -168,6 +176,11 @@ export default function Dashboard() {
     return () => { clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
   }, []);
 
+  // MapLibre listens to window resize; nudge it after a switch so the map refits its box.
+  useEffect(() => {
+    if (view === "globe") window.dispatchEvent(new Event("resize"));
+  }, [view]);
+
   const places = useMemo(() => data?.places.places ?? [], [data]);
   const continents = useMemo(
     () => [...new Set(places.map((p) => p.continent))].sort(),
@@ -192,6 +205,7 @@ export default function Dashboard() {
       selected: i,
       flyTo: fly && i != null && places[i] ? { lon: places[i].lon, lat: places[i].lat } : prev.flyTo,
     }));
+    if (fly && i != null) setView("globe");
   }, [places]);
 
   /** An alert picks its place and its hazard (14-day risk, so mode next14), and flies the globe (DESIGN §4). */
@@ -204,6 +218,7 @@ export default function Dashboard() {
       selected: i,
       flyTo: places[i] ? { lon: places[i].lon, lat: places[i].lat } : prev.flyTo,
     }));
+    setView("globe");
   }, [places]);
 
   // Escape clears the selection (DESIGN §8).
@@ -243,8 +258,12 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-page text-ink">
-      <section className="relative min-w-0" style={{ flex: 1.15 }}>
+    <div className="relative flex h-screen w-screen overflow-hidden bg-page text-ink">
+      {/* below lg the section fills the screen and goes invisible (never unmounted) on Panels */}
+      <section
+        className={`absolute inset-0 min-w-0 lg:relative lg:inset-auto lg:visible ${view === "panels" ? "invisible" : ""}`}
+        style={{ flex: 1.15 }}
+      >
         <Globe
           places={places}
           risk={data?.risk ?? null}
@@ -263,13 +282,13 @@ export default function Dashboard() {
         />
 
         {/* title block, DESIGN §3 */}
-        <div className="absolute left-4 top-4 z-10 flex flex-col gap-2">
+        <div className="absolute left-4 right-4 top-4 z-10 flex flex-col gap-2 lg:right-auto">
           <div className="pointer-events-none">
-            <div className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
+            <div className="flex flex-wrap items-center gap-2 text-[15px] font-semibold tracking-tight">
               <span className="inline-block h-2 w-2 rounded-full bg-accent" />
               Earth System Trend Detective
             </div>
-            <div className="mt-0.5 text-[11.5px] text-ink-2">
+            <div className="mt-0.5 max-w-full text-[11.5px] text-ink-2">
               {data
                 ? `${fmtCount(places.length)} places on watch · trends and 14-day hazard risk from NASA FIRMS, POWER and GIBS · forecast by Open-Meteo`
                 : error ? `could not load data: ${error}` : "loading…"}
@@ -287,7 +306,7 @@ export default function Dashboard() {
           </div>
 
           {/* controls, PRD §5: search (S3-B) · mode · hazard · trend variable · continent; imagery toggles + slider sit on the globe (M-GIBS) */}
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/55 px-2.5 py-1.5 backdrop-blur">
+          <div className="flex max-w-full flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/55 px-2.5 py-1.5 backdrop-blur">
             <Search places={places} onPick={(i) => select(i, true)} />
             <Toggle
               label="mode"
@@ -324,7 +343,11 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <aside className="sidebar-scroll flex w-[560px] shrink-0 flex-col gap-3 border-l border-border p-3">
+      <aside
+        className={`sidebar-scroll absolute inset-0 z-20 w-full flex-col gap-3 bg-page p-3 pb-24 lg:static lg:z-auto lg:flex lg:w-[560px] lg:shrink-0 lg:border-l lg:border-border lg:bg-transparent lg:pb-3 ${
+          view === "panels" ? "flex" : "hidden"
+        }`}
+      >
         <Kpis data={data} filter={filter} />
         {s.mode === "now" ? (<>{trendsTable}{hazardsTable}</>) : (<>{hazardsTable}{trendsTable}</>)}
         <PlacePanel
@@ -363,6 +386,28 @@ export default function Dashboard() {
           warning service. Follow local authorities.
         </footer>
       </aside>
+
+      {/* KI-18 interim: phone view switch, bottom-centre over everything; gone at lg */}
+      <div
+        role="tablist"
+        aria-label="view"
+        className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-1 rounded-full border border-white/10 bg-black/60 p-1 backdrop-blur lg:hidden"
+      >
+        {(["globe", "panels"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            onClick={() => setView(v)}
+            className={`h-11 min-w-24 rounded-full px-5 text-[13px] font-medium capitalize transition ${
+              view === v ? "bg-white/15 text-ink" : "text-muted hover:text-ink"
+            }`}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
