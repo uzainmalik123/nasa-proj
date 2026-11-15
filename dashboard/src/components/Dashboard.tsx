@@ -139,6 +139,7 @@ export default function Dashboard() {
   const [probe, setProbe] = useState<ProbeState>("checking");
   const [s, setS] = useState<AppState>(readUrl);
   const [view, setView] = useState<MobileView>(readView);
+  const [tab, setTab] = useState<Tab>("risk");
   const now = useNow();
   const dataRef = useRef<Data | null>(null);
 
@@ -259,7 +260,63 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden bg-page text-ink">
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-page text-ink">
+      {/* top bar (layout spec §5.1), desktop only; phones keep the overlay title block */}
+      <header className="relative z-30 hidden h-14 shrink-0 items-center gap-5 border-b border-border bg-page px-4 lg:flex">
+        <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+          <span className="brand-mark" aria-hidden />
+          <div className="leading-tight">
+            <div className="text-[14px] font-semibold tracking-[-0.01em] text-ink">Earth System Trend Detective</div>
+            <div className="text-[10px] text-muted">NASA FIRMS · POWER · GIBS · forecast Open-Meteo</div>
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <Search places={places} onPick={(i) => select(i, true)} />
+              <Toggle
+                label="mode"
+                value={s.mode}
+                options={[
+                  ["now", "Now", "the category each place is in today"],
+                  ["next14", "Next 14 days", "calibrated probability for the next 14 days"],
+                ]}
+                onChange={(mode) => setS((p) => ({ ...p, mode }))}
+              />
+              <Select
+                label="hazard"
+                value={s.hazard}
+                options={HAZARDS.map((h) => [h, HAZARD_LABEL[h]])}
+                onChange={(hazard) => setS((p) => ({ ...p, hazard, lens: "hazard" }))}
+                active={s.lens === "hazard"}
+                title="colours the globe"
+              />
+              <Select
+                label="trend"
+                value={s.trendVar}
+                options={VARIABLES.map((v) => [v, VARIABLE_LABEL[v]])}
+                onChange={(trendVar) => setS((p) => ({ ...p, trendVar, lens: "trend" }))}
+                active={s.lens === "trend"}
+                title="pick a variable to colour the globe by its 10-year trend"
+              />
+              <Select
+                label="region"
+                value={s.continent ?? "world"}
+                options={[["world", "world"], ...continents.map((c): [string, string] => [c, c])]}
+                onChange={(v) => setS((p) => ({ ...p, continent: v === "world" ? null : v }))}
+              />
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <div
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.06em]"
+            style={{ borderColor: `${pillColour}80`, color: pillColour, background: `${pillColour}14` }}
+            title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)} · from ${source === "cache" ? "the browser cache" : "the network"}` : undefined}
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
+            {data ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}${pillNote}` : error ? "failed" : `loading ${progress[0]} of ${progress[1]}`}
+          </div>
+          <UtcClock now={now} />
+        </div>
+      </header>
+      <div className="relative flex min-h-0 flex-1">
       {/* below lg the section fills the screen and goes invisible (never unmounted) on Panels */}
       <section
         className={`absolute inset-0 min-w-0 lg:relative lg:inset-auto lg:visible ${view === "panels" ? "invisible" : ""}`}
@@ -283,7 +340,7 @@ export default function Dashboard() {
         />
 
         {/* title block, DESIGN §3 */}
-        <div className="absolute left-4 right-4 top-4 z-10 flex flex-col gap-2 lg:right-auto">
+        <div className="absolute left-4 right-4 top-4 z-10 flex flex-col gap-2 lg:hidden">
           <div className="pointer-events-none">
             <div className="flex flex-wrap items-center gap-2 text-[15px] font-semibold tracking-tight">
               <span className="inline-block h-2 w-2 rounded-full bg-accent" />
@@ -368,38 +425,71 @@ export default function Dashboard() {
       </section>
 
       <aside
-        className={`sidebar-scroll absolute inset-0 z-20 w-full flex-col gap-3 bg-page p-3 pb-24 lg:static lg:z-auto lg:flex lg:w-[560px] lg:shrink-0 lg:border-l lg:border-border lg:bg-transparent lg:pb-3 ${
+        className={`absolute inset-0 z-20 w-full flex-col bg-page pb-20 lg:static lg:z-auto lg:order-first lg:flex lg:w-[552px] lg:shrink-0 lg:border-r lg:border-border lg:pb-0 ${
           view === "panels" ? "flex" : "hidden"
         }`}
       >
-        <Kpis data={data} filter={filter} />
-        {s.mode === "now" ? (<>{trendsTable}{hazardsTable}</>) : (<>{hazardsTable}{trendsTable}</>)}
-        <Movers
-          places={places}
-          risk={data?.risk ?? null}
-          hazard={s.hazard}
-          selected={s.selected}
-          filter={filter}
-          continent={s.continent}
-          onPick={(i) => select(i, true)}
-        />
-        <Continents
-          places={places}
-          risk={data?.risk ?? null}
-          hazard={s.hazard}
-          continent={s.continent}
-          onPick={(continent) => setS((p) => ({ ...p, continent }))}
-        />
-        <Feed feed={data?.feed ?? null} places={places} selected={s.selected} hazard={s.hazard} filter={filter} onPick={pickAlert} />
-        <Honesty honesty={data?.honesty ?? null} />
-        <Freshness freshness={data?.freshness ?? null} run={data?.run ?? null} />
-        <Sources freshness={data?.freshness ?? null} trends={data?.trends ?? null} risk={data?.risk ?? null} />
-        <footer className="px-1 pb-1 text-[10px] leading-snug text-muted">
-          Observation (NASA POWER, FIRMS, GIBS), forecast (Open-Meteo), trend (Mann-Kendall) and risk assessment (our
-          hazard modules) are four different things and are labelled as such. Informational tool, not an official
-          warning service. Follow local authorities.
-        </footer>
+        <nav role="tablist" aria-label="sections" className="grid shrink-0 grid-cols-5 border-b border-border px-2 pt-2">
+          {TABS.map(([key, label, icon]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={`tab-btn group relative flex flex-col items-center gap-1.5 rounded-t-lg px-1 pb-2.5 pt-2 text-[10.5px] transition-colors ${
+                tab === key ? "text-ink" : "text-muted hover:text-ink-2"
+              }`}
+            >
+              <TabIcon name={icon} active={tab === key} />
+              {label}
+              <span className={`absolute inset-x-4 -bottom-px h-0.5 rounded-full transition-colors ${tab === key ? "bg-accent" : "bg-transparent"}`} />
+            </button>
+          ))}
+        </nav>
+        <div key={tab} className="sidebar-scroll tab-pane flex min-h-0 flex-1 flex-col gap-3 p-3">
+          {tab === "risk" && (<>
+            <Kpis data={data} filter={filter} />
+            {hazardsTable}
+            <Movers
+              places={places}
+              risk={data?.risk ?? null}
+              hazard={s.hazard}
+              selected={s.selected}
+              filter={filter}
+              continent={s.continent}
+              onPick={(i) => select(i, true)}
+            />
+          </>)}
+          {tab === "trends" && trendsTable}
+          {tab === "alerts" && (
+            <Feed feed={data?.feed ?? null} places={places} selected={s.selected} hazard={s.hazard} filter={filter} onPick={pickAlert} />
+          )}
+          {tab === "regions" && (
+            <Continents
+              places={places}
+              risk={data?.risk ?? null}
+              hazard={s.hazard}
+              continent={s.continent}
+              onPick={(continent) => setS((p) => ({ ...p, continent }))}
+            />
+          )}
+          {tab === "sources" && (<>
+            <p className="px-1 text-[11.5px] leading-snug text-ink-2">
+              {data ? `${fmtCount(places.length)} places on watch. ` : ""}Trends and 14-day hazard risk from NASA FIRMS, POWER and GIBS, forecast by Open-Meteo. Click a place on the globe, a row or an alert to open its full story.
+            </p>
+            <Freshness freshness={data?.freshness ?? null} run={data?.run ?? null} />
+            <Sources freshness={data?.freshness ?? null} trends={data?.trends ?? null} risk={data?.risk ?? null} />
+            <Honesty honesty={data?.honesty ?? null} />
+            <footer className="px-1 pb-1 text-[10px] leading-snug text-muted">
+              Observation (NASA POWER, FIRMS, GIBS), forecast (Open-Meteo), trend (Mann-Kendall) and risk assessment (our
+              hazard modules) are four different things and are labelled as such. Informational tool, not an official
+              warning service. Follow local authorities.
+            </footer>
+          </>)}
+        </div>
       </aside>
+      </div>
 
       {/* KI-18 interim: phone view switch, bottom-centre over everything; gone at lg */}
       <div
@@ -477,4 +567,39 @@ function Select<T extends string>({ label, value, options, onChange, active, tit
       </select>
     </label>
   );
+}
+
+
+type Tab = "risk" | "trends" | "alerts" | "regions" | "sources";
+const TABS: [Tab, string, IconName][] = [
+  ["risk", "Risk", "flame"],
+  ["trends", "Trends", "trend"],
+  ["alerts", "Alerts", "bell"],
+  ["regions", "Regions", "globe"],
+  ["sources", "Sources", "data"],
+];
+
+type IconName = "flame" | "trend" | "bell" | "globe" | "data";
+const ICON_PATHS: Record<IconName, string[]> = {
+  flame: ["M12 3c.5 3.5 4.5 5.2 4.5 9.6A4.5 4.5 0 0 1 12 17a4.5 4.5 0 0 1-4.5-4.4C7.5 10 9.6 8.6 10 6.2c1.2 1 1.6 2.4 1.6 3.6C13 8.6 12.8 5.6 12 3Z", "M10.2 14.6a1.9 1.9 0 0 0 3.6 0"],
+  trend: ["M4 17l5.2-5.2 3.4 3.4L20 7.8", "M15 7.8h5v5"],
+  bell: ["M6.5 15.5V11a5.5 5.5 0 0 1 11 0v4.5l1.5 2H5l1.5-2Z", "M10 20a2.2 2.2 0 0 0 4 0"],
+  globe: ["M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Z", "M3.5 12h17", "M12 3.5c2.4 2.4 3.5 5.3 3.5 8.5s-1.1 6.1-3.5 8.5c-2.4-2.4-3.5-5.3-3.5-8.5s1.1-6.1 3.5-8.5Z"],
+  data: ["M5 6.5c0-1.4 3.1-2.5 7-2.5s7 1.1 7 2.5-3.1 2.5-7 2.5-7-1.1-7-2.5Z", "M5 6.5v11c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-11", "M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"],
+};
+
+function TabIcon({ name, active }: { name: IconName; active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden
+      stroke={active ? P.ink : "currentColor"} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
+      style={active ? { filter: "drop-shadow(0 0 6px rgba(234,88,12,0.55))" } : undefined}>
+      {ICON_PATHS[name].map((d) => <path key={d} d={d} stroke={active && d === ICON_PATHS[name][0] ? P.s2 : undefined} />)}
+    </svg>
+  );
+}
+
+function UtcClock({ now }: { now: number | Date }) {
+  const d = new Date(now);
+  const t = `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)} UTC`;
+  return <time className="font-mono text-[11px] tabular-nums text-ink-2" dateTime={d.toISOString()}>{t}</time>;
 }

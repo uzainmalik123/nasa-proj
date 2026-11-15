@@ -238,7 +238,7 @@ This section is the tracker. The work is split across sessions; each session tak
 | ID | Package | Owner | Depends on | Status |
 |---|---|---|---|---|
 | L1 | Left column with the six-tab strip; move the eleven sections into tabs; column footer with source dots; KPI tiles removed; column width measured and set (§5.2); `tab` in state and URL; `walk.mjs` rewritten; `lucide-react` added | S4 | – | open |
-| L2 | Top bar (§5.1): brand + source strip, controls moved up, imagery select back in the bar, live pill, UTC clock; title block and floating control panel removed from the globe | S4 | L1 | open |
+| L2 | Top bar (§5.1): brand + source strip, controls moved up, imagery select back in the bar, live pill, UTC clock; title block and floating control panel removed from the globe | S4 | L1 | done (PR), desktop only; phones keep the overlay title block |
 | L3 | Stage furniture (§5.3): legend to top-left, place card top-right, `GibsControl` removed from the globe | S3 | L2 | open |
 | L4 | Dock gauges (§5.4 gauges table): ring component, six tiles, region filter, tooltips | S4 | L1 | open |
 | L5 | Dock timeline (§5.4 timeline): track, play, `day` in state and URL, globe recolour from `history` / `fwi_forecast`, GIBS date follows the day, `date=` folded into `day=` | S3 | L3, L4 | open |
