@@ -346,31 +346,26 @@ export default function Dashboard() {
         />
 
         {/* title block, DESIGN §3 */}
-        <div className="absolute left-4 right-4 top-4 z-10 flex flex-col gap-2 lg:hidden">
-          <div className="pointer-events-none">
-            <div className="flex flex-wrap items-center gap-2 text-[15px] font-semibold tracking-tight">
-              <span className="inline-block h-2 w-2 rounded-full bg-accent" />
+        <div className="absolute inset-x-2 top-2 z-10 flex flex-col gap-1.5 lg:hidden">
+          {/* phone header: one glass bar, brand left, live state right (the context sentence lives in Sources) */}
+          <div className="flex h-11 items-center gap-2.5 rounded-xl border border-white/10 bg-black/65 px-3 backdrop-blur">
+            <span className="brand-mark !h-4 !w-4" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-[14px] font-semibold leading-none tracking-[-0.01em] text-ink">
               Earth System Trend Detective
-            </div>
-            <div className="mt-0.5 max-w-full text-[11.5px] text-ink-2">
-              {data
-                ? `${fmtCount(places.length)} places on watch · trends and 14-day hazard risk from NASA FIRMS, POWER and GIBS · forecast by Open-Meteo`
-                : error ? `could not load data: ${error}` : "loading…"}
-            </div>
-            <div
-              className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide"
-              style={{ borderColor: pillColour, color: pillColour, background: `${pillColour}1f` }}
-              title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)} · from ${source === "cache" ? "the browser cache" : "the network"}` : undefined}
+            </span>
+            <span
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium uppercase leading-none tracking-[0.05em]"
+              style={{ borderColor: `${pillColour}80`, color: pillColour, background: `${pillColour}14` }}
+              title={data ? `run ${data.run.run_id} · updated ${fmtAge(age)}` : undefined}
+              aria-live="polite"
             >
               <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
-              {data
-                ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}${pillNote}`
-                : error ? "could not load data" : `loading ${progress[0]} of ${progress[1]} files`}
-            </div>
+              {data ? (live ? "live" : "stale") : error ? "error" : `${progress[0]}/${progress[1]}`}
+            </span>
           </div>
 
           {/* controls, PRD §5: search (S3-B) · mode · hazard · trend variable · continent; imagery toggles + slider sit on the globe (M-GIBS) */}
-          <div className="flex max-w-full flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/55 px-2.5 py-1.5 backdrop-blur">
+          <div className="mobile-controls flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-white/10 bg-black/65 px-2.5 py-1.5 backdrop-blur">
             <Search places={places} onPick={(i) => select(i, true)} />
             <Toggle
               label="mode"
