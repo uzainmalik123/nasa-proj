@@ -22,7 +22,8 @@ import {
   continentSet, hazardText, pickColouring, pointStates, trendText, type Colouring,
 } from "./colour";
 import {
-  FIRE_CELL_DEG, FIRE_DOT_RADIUS, FIRE_FILL, FIRE_GLOW_RADIUS, FIRE_STROKE, fireSourceLabel, fmtAcq, fmtCentre, fmtFrp,
+  FIRE_CELL_DEG, FIRE_DOT_RADIUS, FIRE_FILL, FIRE_GLOW_RADIUS, FIRE_HEAT_PAINT, FIRE_STROKE, fadeInDots, fireSourceLabel,
+  fmtAcq, fmtCentre, fmtFrp,
 } from "./fires";
 import {
   GIBS_LAYERS, clampGibsDate, gibsNewestDate, gibsTileUrl, resolveGibsDate, type GibsLayerKey, type GibsValid,
@@ -74,6 +75,7 @@ const SRC_FIRES = "fires";
 const SRC_GIBS = "gibs";
 const L_PLACES = "places";
 const L_SELECTED = "places-selected";
+const L_FIRE_HEAT = "fires-heat";
 const L_FIRE_GLOW = "fires-glow";
 const L_FIRE_DOT = "fires-dot";
 const L_GIBS = "gibs";
@@ -259,7 +261,7 @@ export default function Globe(props: GlobeProps) {
         paint: {
           "circle-color": FIRE_FILL,
           "circle-radius": FIRE_GLOW_RADIUS,
-          "circle-opacity": 0.18,
+          "circle-opacity": fadeInDots(0.18),
           "circle-blur": 1,
         },
       });
@@ -274,8 +276,13 @@ export default function Globe(props: GlobeProps) {
           "circle-radius": FIRE_DOT_RADIUS,
           "circle-stroke-color": FIRE_STROKE,
           "circle-stroke-width": 1.2,
+          "circle-opacity": fadeInDots(1),
+          "circle-stroke-opacity": fadeInDots(1),
         },
       });
+      // F1: density view at world zoom, inserted under the places (and so under the fire glow and
+      // dots) so the hazard dots stay readable; no hit-test, hovering the heatmap does nothing
+      map.addLayer({ id: L_FIRE_HEAT, type: "heatmap", source: SRC_FIRES, paint: FIRE_HEAT_PAINT }, L_PLACES);
 
       // hover tooltip + click, driven straight off the DOM (no React state).
       // One map-level handler queries both hit layers; a place wins over a fire
