@@ -122,7 +122,7 @@ export function cmp(a: number | string | null, b: number | string | null, dir: "
 /** Row chrome shared by the ranked tables (DESIGN §5: 28 px, 11 px, border only). */
 export const ROW_CLASS = "h-7 cursor-pointer border-t border-border text-[11px] transition hover:bg-white/[0.04]";
 export const ROW_SELECTED = "bg-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.3)]";
-export const TABLE_SCROLL = "max-h-[560px] overflow-y-auto"; // ~20 rows of 28 px
+export const TABLE_SCROLL = "max-h-[560px] overflow-y-auto pr-1.5 [scrollbar-gutter:stable]"; // ~20 rows of 28 px
 
 /** A non-sortable header cell laid out exactly like SortHeader's (same inline-flex box), so header text shares one baseline. */
 export function PlainHeader({ label, align = "left", title }: { label: ReactNode; align?: "left" | "right"; title?: string }) {

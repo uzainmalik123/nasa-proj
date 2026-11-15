@@ -96,3 +96,12 @@ html, body {
 /* floating place panel: a real surface so it separates from the globe */
 .place-float > section { background: rgba(20, 20, 19, 0.94); backdrop-filter: blur(10px); }
 .topbar-controls > span { font-size: 11px; text-transform: capitalize; letter-spacing: 0; }
+
+/* scrollbars: thin and themed everywhere (Chromium's default is a thick light bar),
+   and the column reserves its gutter so the bar never sits on the table's numbers */
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.16) transparent; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+.sidebar-scroll { scrollbar-gutter: stable; }

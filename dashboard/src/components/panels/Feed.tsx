@@ -60,7 +60,7 @@ export default function Feed({ feed, places, selected, hazard, filter, onPick, m
         </span>
       }
     >
-      <div className="max-h-[420px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+      <div className="max-h-[420px] overflow-y-auto pr-1.5 [scrollbar-gutter:stable]">
         {!feed && <div className="h-[420px]" aria-hidden="true" />}
         {feed && alerts.length === 0 && (
           <div className="py-4 text-center text-[11px] text-muted">no alerts{filter ? " in this region" : ""}</div>
