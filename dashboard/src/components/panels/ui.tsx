@@ -3,6 +3,7 @@
 // sortable table header. Tokens from DESIGN.md §2 only.
 import type { ReactNode } from "react";
 import { CATEGORY_V, riskColour } from "@/components/charts/ramp";
+import { fmtUtc } from "@/lib/format";
 import { P } from "@/lib/palette";
 import type { Category } from "@/lib/types";
 
@@ -122,3 +123,50 @@ export function cmp(a: number | string | null, b: number | string | null, dir: "
 export const ROW_CLASS = "h-7 cursor-pointer border-t border-border text-[11px] transition hover:bg-white/[0.04]";
 export const ROW_SELECTED = "bg-white/[0.06] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.3)]";
 export const TABLE_SCROLL = "max-h-[560px] overflow-y-auto"; // ~20 rows of 28 px
+
+/** A non-sortable header cell laid out exactly like SortHeader's (same inline-flex box), so header text shares one baseline. */
+export function PlainHeader({ label, align = "left", title }: { label: ReactNode; align?: "left" | "right"; title?: string }) {
+  return (
+    <th className={`${align === "right" ? "text-right" : "text-left"} overflow-hidden pr-1 font-normal`} title={title}>
+      <span className="inline-flex max-w-full items-center gap-0.5 whitespace-nowrap text-[10px] uppercase tracking-wide text-muted">
+        <span className="truncate">{label}</span>
+        <span className="text-[7px] leading-none opacity-0" aria-hidden="true">▼</span>
+      </span>
+    </th>
+  );
+}
+
+/**
+ * Loading state for the ranked tables (DESIGN §8 no layout shift): `n` rows at
+ * the real 28 px row height with static muted bars, so the card is already its
+ * loaded height. Static on purpose: nothing animates on load (DESIGN §7).
+ */
+export function SkeletonRows({ n, cols }: { n: number; cols: number }) {
+  return (
+    <>
+      {Array.from({ length: n }, (_, r) => (
+        <tr key={r} className="h-7 border-t border-border" aria-hidden="true">
+          {Array.from({ length: cols }, (_, c) => (
+            <td key={c} className="pr-1">
+              <span className="block h-2 rounded-sm bg-white/[0.05]" style={{ width: c === 1 ? `${55 + ((r * 37) % 35)}%` : "70%" }} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Provenance line for a panel caption (PRD §7.4: every panel shows valid time
+ * and retrieved time): "valid <window> · retrieved <UTC> · <kind>". `retrieved`
+ * is the producing file's meta.generated_at.
+ */
+export function Stamp({ valid, retrieved, kind }: { valid?: ReactNode; retrieved: string | null | undefined; kind: string }) {
+  return (
+    <span>
+      {valid != null && <>valid <span className="font-mono">{valid}</span> · </>}
+      retrieved <span className="font-mono">{fmtUtc(retrieved, true)}</span> · {kind}
+    </span>
+  );
+}

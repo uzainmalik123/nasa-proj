@@ -15,7 +15,7 @@ import { CATEGORY_V, WILDFIRE_THRESHOLDS_PCT, deltaColour, riskColour } from "@/
 import { RISK_STOPS } from "@/lib/palette";
 import { CATEGORY_ORDER, CONFIDENCE_ORDER, HAZARD_LABEL, fmtCount, fmtDay, pct, signed } from "@/lib/format";
 import type { Category, Confidence, Hazard, Mode, Place, RiskFile, RiskNow } from "@/lib/types";
-import { Card, CategoryChip, DeltaChip, ROW_CLASS, ROW_SELECTED, SortHeader, TABLE_SCROLL, cmp, nextSort, type SortState } from "./ui";
+import { Card, CategoryChip, DeltaChip, PlainHeader, ROW_CLASS, ROW_SELECTED, SkeletonRows, SortHeader, Stamp, TABLE_SCROLL, cmp, nextSort, type SortState } from "./ui";
 
 type Key = "rank" | "name" | "country" | "value" | "delta" | "category" | "exposure";
 
@@ -150,7 +150,8 @@ export default function HazardsTable({ places, risk, hazard, mode, selected, fil
             risk ramp {RAMP_LABEL} = 50 / 80 / 95 / 99th percentile of today&apos;s wildfire p
           </span>
           <span>spark = last {SPARK_DAYS} days of hindcast · Δ vs 7 days ago</span>
-          <span>{UNIT_NOTE[hazard]} · valid {risk?.valid_from ?? "–"} → {risk?.valid_to ?? "–"} · risk assessment</span>
+          <span>{UNIT_NOTE[hazard]}</span>
+          <Stamp valid={risk ? `${risk.valid_from} → ${risk.valid_to}` : "–"} retrieved={risk?.meta.generated_at} kind="risk assessment" />
         </span>
       }
     >
@@ -168,7 +169,7 @@ export default function HazardsTable({ places, risk, hazard, mode, selected, fil
               {byCategory
                 ? <SortHeader k="value" label="category" sort={sort} onSort={onSort} title="low / elevated / high / extreme, from the risk assessment issued today" />
                 : <SortHeader k="value" label={valueHeader} sort={sort} onSort={onSort} align="right" title={UNIT_NOTE[hazard]} />}
-              <th className="pr-1 text-left text-[10px] font-normal uppercase tracking-wide text-muted">hindcast</th>
+              <PlainHeader label="hindcast" title="the model re-run on each of the last days" />
               <SortHeader k="delta" label="Δ 7d" sort={sort} onSort={onSort} align="right" />
               {byCategory
                 ? <SortHeader k="category" label={valueHeader} sort={sort} onSort={onSort} align="right" title={UNIT_NOTE[hazard]} />
@@ -177,8 +178,9 @@ export default function HazardsTable({ places, risk, hazard, mode, selected, fil
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={8} className="py-4 text-center text-[11px] text-muted">no risk yet</td></tr>
+            {!risk && <SkeletonRows n={20} cols={8} />}
+            {risk && rows.length === 0 && (
+              <tr><td colSpan={8} className="py-4 text-center text-[11px] text-muted">no places in this region</td></tr>
             )}
             {rows.map((r) => {
               const hist = (risk?.history[hazard]?.[r.i] ?? []).slice(-SPARK_DAYS);

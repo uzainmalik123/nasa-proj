@@ -15,7 +15,7 @@ import { P } from "@/lib/palette";
 import { useSize } from "@/lib/useSize";
 import type { Category, Continents as ContinentsBlock, Hazard, Place, RiskFile } from "@/lib/types";
 import { fmtHeadline } from "./HazardsTable";
-import { Card } from "./ui";
+import { Card, Stamp } from "./ui";
 
 export interface ContinentsProps {
   places: Place[];
@@ -80,12 +80,13 @@ export default function Continents({ places, risk, hazard, continent, onPick }: 
           <span>
             {block ? `${names.length} continents · ${fmtCount(block.n.reduce((a, b) => a + b, 0))} places` : "loading…"}
             {source === "browser" ? " · computed in the browser (run predates continents)" : ` · from run ${risk?.meta.run_id ?? "–"}`}
-            {" · click a row to filter the screen · risk assessment"}
+            {" · click a row to filter the screen"}
           </span>
+          <Stamp valid={risk ? `${risk.valid_from} → ${risk.valid_to}` : "–"} retrieved={risk?.meta.generated_at} kind="risk assessment" />
         </span>
       }
     >
-      {!block && <div className="py-4 text-center text-[11px] text-muted">no risk yet</div>}
+      {!block && <div className="h-[262px]" aria-hidden="true" />}
       {block && (
         <>
           <table className="w-full table-fixed border-collapse" aria-label="places per category by continent">

@@ -12,7 +12,7 @@ import { fmtCount, fmtDay, pct } from "@/lib/format";
 import { P } from "@/lib/palette";
 import type { HonestyBucket, HonestyFile, RunSummary } from "@/lib/types";
 import { useSize } from "@/lib/useSize";
-import { Card, Chip } from "./ui";
+import { Card, Chip, Stamp } from "./ui";
 
 const PLOT_H = 110;                                   // DESIGN §8 fixed chart heights
 const M = { left: 36, right: 8, top: 10, bottom: 30 }; // bottom fits the range label and n
@@ -186,7 +186,7 @@ export default function Honesty({ honesty }: { honesty: HonestyFile | null }) {
             <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
               <span className="inline-flex items-center gap-1"><i className="inline-block h-[2.5px] w-3 rounded-sm" style={{ background: P.s1 }} /> predicted (mean calibrated probability)</span>
               <span className="inline-flex items-center gap-1"><i className="inline-block h-[2.5px] w-3 rounded-sm" style={{ background: P.s2 }} /> observed (share with ≥3 FIRMS detections in 14 days)</span>
-              <span>{fmtDay(honesty.window[0])} → {fmtDay(honesty.window[1])}</span>
+              <Stamp valid={`${fmtDay(honesty.window[0])} → ${fmtDay(honesty.window[1])}`} retrieved={honesty.meta.generated_at} kind={hindcast ? "held-out hindcast" : "published risk, scored"} />
             </span>
             <span>
               {hindcast

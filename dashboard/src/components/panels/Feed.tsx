@@ -8,7 +8,7 @@ import { HAZARD_LABEL, fmtCount, fmtDay, fmtUtc, pct } from "@/lib/format";
 import { P } from "@/lib/palette";
 import type { Alert, AlertTrigger, FeedFile, Hazard, Place } from "@/lib/types";
 import { fmtSeverity } from "./HazardCard";
-import { Card, CategoryChip, Chip } from "./ui";
+import { Card, CategoryChip, Chip, Stamp } from "./ui";
 
 const TRIGGER_LABEL: Record<AlertTrigger, string> = {
   category_up: "category ↑",
@@ -55,13 +55,15 @@ export default function Feed({ feed, places, selected, hazard, filter, onPick, m
         <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
           <span>one alert per place per hazard per 7 days · newest first · pulse = newest</span>
           <span>triggers: category up · risk {">"} 2σ above its own 90-day mean · new |z| {">"} 1.5 anomaly</span>
-          <span>{feed ? `${active} active of ${alerts.length}${filter ? " in region" : ""} · run ${feed.meta.run_id}` : "loading…"} · risk assessment</span>
+          <span>{feed ? `${active} active of ${alerts.length}${filter ? " in region" : ""} · run ${feed.meta.run_id}` : "loading…"}</span>
+          <Stamp valid="per alert, shown on each row" retrieved={feed?.meta.generated_at} kind="risk assessment" />
         </span>
       }
     >
       <div className="max-h-[420px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-        {alerts.length === 0 && (
-          <div className="py-4 text-center text-[11px] text-muted">{feed ? "no alerts" : "no feed yet"}</div>
+        {!feed && <div className="h-[420px]" aria-hidden="true" />}
+        {feed && alerts.length === 0 && (
+          <div className="py-4 text-center text-[11px] text-muted">no alerts{filter ? " in this region" : ""}</div>
         )}
         <ul className="flex flex-col">
           {alerts.map((a) => {

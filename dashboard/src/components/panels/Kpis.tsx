@@ -2,7 +2,7 @@
 // KPI row (DESIGN.md §5 KPI tile): 10 px uppercase label, 22 px value, 10.5 px
 // sub in green when good. Four tiles, 4-column grid at the top of the aside.
 import { useMemo } from "react";
-import { fmtCount, pct } from "@/lib/format";
+import { fmtCount, fmtDay, fmtMonth, fmtUtc, pct } from "@/lib/format";
 import { P } from "@/lib/palette";
 import type { Data } from "@/lib/types";
 
@@ -13,10 +13,14 @@ function Tile({ label, value, sub, good, title }: {
     <div className="rounded-[14px] border border-border bg-surface px-3 py-3.5" title={title}>
       <div className="whitespace-nowrap text-[10px] uppercase tracking-wide text-muted">{label}</div>
       <div className="mt-0.5 font-mono text-[22px] font-semibold leading-none text-ink">{value}</div>
-      <div className="mt-1 text-[10.5px] leading-snug" style={{ color: good ? P.good : P.muted }}>{sub}</div>
+      {/* two lines reserved, so the tile is its loaded height while loading (DESIGN §8) */}
+      <div className="mt-1 min-h-[2.75em] text-[10.5px] leading-snug" style={{ color: good ? P.good : P.muted }}>{sub}</div>
     </div>
   );
 }
+
+/** "15 Nov 04:30" from an ISO time (UTC), short enough for the one-line stamp under the tiles. */
+const short = (iso: string) => `${fmtDay(fmtUtc(iso).slice(0, 10))} ${fmtUtc(iso).slice(11)}`;
 
 export default function Kpis({ data, filter }: { data: Data | null; filter: Set<number> | null }) {
   const k = useMemo(() => {
@@ -47,10 +51,13 @@ export default function Kpis({ data, filter }: { data: Data | null; filter: Set<
 
   if (!k) {
     return (
-      <div className="grid grid-cols-4 gap-3">
-        {["places on watch", "fires 24 h", "places drying", "top-20 hit rate"].map((l) => (
-          <Tile key={l} label={l} value="–" sub="loading…" />
-        ))}
+      <div>
+        <div className="grid grid-cols-4 gap-3">
+          {["places on watch", "fires 24 h", "places drying", "top-20 hit rate"].map((l) => (
+            <Tile key={l} label={l} value="–" sub="loading…" />
+          ))}
+        </div>
+        <div className="mt-1.5 px-1 text-[10px] leading-snug text-muted">&nbsp;</div>
       </div>
     );
   }
@@ -58,6 +65,7 @@ export default function Kpis({ data, filter }: { data: Data | null; filter: Set<
   const passed = gates.filter((g) => g.pass === true).length;
   const judged = gates.filter((g) => g.pass != null).length;
   return (
+    <div>
     <div className="grid grid-cols-4 gap-3">
       <Tile
         label="places on watch"
@@ -69,7 +77,7 @@ export default function Kpis({ data, filter }: { data: Data | null; filter: Set<
       <Tile
         label="fires 24 h"
         value={fmtCount(k.fires)}
-        sub={`${fmtCount(data!.fires.bins.length)} bins · ${data!.fires.source}`}
+        sub={`detections · ${fmtCount(data!.fires.bins.length)} cells of 0.25°`}
         title="FIRMS detections in the last 24 h, global, observation"
       />
       <Tile
@@ -85,6 +93,13 @@ export default function Kpis({ data, filter }: { data: Data | null; filter: Set<
         good={k.hit > k.base}
         title="share of the 20 highest wildfire risks that saw ≥3 detections, vs the fire-weather baseline"
       />
+    </div>
+      {/* PRD §7.4: valid and retrieved time for the row, one line */}
+      <div className="mt-1.5 truncate px-1 text-[10px] leading-snug text-muted" title={`run ${k.run.run_id}`}>
+        valid: fires to {short(data!.fires.newest_acq)} · rain trend to {fmtMonth(data!.trends.months[data!.trends.months.length - 1] ?? "")}
+        {" · "}hit rate {fmtDay(data!.honesty.window[0])} → {fmtDay(data!.honesty.window[1])}
+        {" · "}retrieved {short(k.run.finished)} UTC
+      </div>
     </div>
   );
 }

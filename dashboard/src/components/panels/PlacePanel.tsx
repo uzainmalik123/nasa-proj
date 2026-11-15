@@ -8,7 +8,7 @@ import AnomalySeries, { FLAG_Z } from "@/components/charts/AnomalySeries";
 import DriverBars from "@/components/charts/DriverBars";
 import TrendChart, { TrendLabelText, type TrendWindowData } from "@/components/charts/TrendChart";
 import { HAZARD_COLOUR } from "@/components/charts/ramp";
-import { HAZARD_LABEL, VARIABLE_LABEL, fmtCount, fmtDay, fmtUtc, signed } from "@/lib/format";
+import { HAZARD_LABEL, VARIABLE_LABEL, fmtCount, fmtDay, fmtMonth, fmtUtc, signed } from "@/lib/format";
 import { P } from "@/lib/palette";
 import { HAZARDS, VARIABLES, type Data, type Hazard, type Mode, type SeriesFile, type Variable } from "@/lib/types";
 import { zScore } from "@/components/charts/chart";
@@ -37,7 +37,7 @@ const SHORT_SERIES: Partial<Record<Variable, { key: keyof SeriesFile; note: stri
 const ANOMALY_ROWS: { key: "rain_30d" | "tmax" | "soil_wet"; label: string; unit: string; digits: number; colour: string }[] = [
   { key: "rain_30d", label: "30-day rainfall", unit: "mm", digits: 0, colour: P.s1 },
   { key: "tmax", label: "max temperature", unit: "°C", digits: 1, colour: P.s4 },
-  { key: "soil_wet", label: "root-zone soil wetness", unit: "", digits: 2, colour: P.s1 },
+  { key: "soil_wet", label: "root-zone soil wetness (0–1)", unit: "", digits: 2, colour: P.s1 },
 ];
 
 export interface PlacePanelProps {
@@ -70,6 +70,8 @@ export default function PlacePanel({ data, selected, trendVar, hazard, mode = "n
   const { trends, risk, series } = data;
   const vi = trends.variables.indexOf(trendVar);
   const unit = trends.units[vi] ?? "";
+  // the chart's y unit: the slope unit without "/yr" (same rule as the TrendChart tooltip)
+  const yUnit = unit.replace(/\/yr$/, "");
 
   const long: TrendWindowData = {
     keys: trends.months,
@@ -102,7 +104,7 @@ export default function PlacePanel({ data, selected, trendVar, hazard, mode = "n
             <span className="block text-[18px] font-semibold leading-[1.2] tracking-[-0.01em] text-ink [text-wrap:balance]">
               {p.name}<span className="font-normal text-muted">, {p.country}</span>
             </span>
-            <span className="mt-1 block text-[11px] font-normal leading-[1.4] text-muted tabular-nums" title={`run ${data.run.run_id} · generated ${fmtUtc(risk.meta.generated_at, true)}`}>
+            <span className="mt-1 block text-[11px] font-normal leading-[1.4] text-muted tabular-nums" title={`run ${data.run.run_id} · retrieved ${fmtUtc(risk.meta.generated_at, true)}`}>
               {p.continent} · {p.lat.toFixed(2)}, {p.lon.toFixed(2)} · pop {fmtCount(p.pop)} within {p.radius_km} km{p.capital ? " · capital" : ""}
             </span>
           </span>
@@ -121,15 +123,15 @@ export default function PlacePanel({ data, selected, trendVar, hazard, mode = "n
       {/* ── trend ─────────────────────────────────────────────────────── */}
       <SectionHead
         left={<>How has <span className="text-ink">{VARIABLE_LABEL[trendVar]}</span> changed here?</>}
-        right={<span className="text-muted">trend · Mann-Kendall + Sen&apos;s slope · NASA POWER{trendVar === "fires" ? " / FIRMS" : ""}</span>}
+        right={<span className="text-muted">trend · valid {trends.months.length ? `${fmtMonth(trends.months[0])} → ${fmtMonth(trends.months[trends.months.length - 1])}` : "–"} · NASA POWER{trendVar === "fires" ? " / FIRMS" : ""}</span>}
       />
       <div className="mb-1 flex items-end justify-between gap-2 text-[10px] text-muted">
         <span className="flex flex-col">
-          <span>10 years · monthly mean</span>
+          <span>10 years · monthly mean{yUnit ? ` · y in ${yUnit}` : ""}</span>
           <TrendLabelText w={long} unit={unit} />
         </span>
         <span className="flex flex-col items-end text-right">
-          <span>last 90 days{shortSpec ? ` · ${shortSpec.note}` : ""}</span>
+          <span>last 90 days{shortSpec ? ` · ${shortSpec.note}` : ""}{yUnit ? ` · ${yUnit}` : ""}</span>
           <TrendLabelText w={short} unit={unit} />
         </span>
       </div>
@@ -191,7 +193,7 @@ export default function PlacePanel({ data, selected, trendVar, hazard, mode = "n
         return (
           <div key={row.key} className="mt-1">
             <div className="flex items-baseline justify-between text-[10px]">
-              <span className="text-ink-2">{row.label}</span>
+              <span className="text-ink-2">{row.label}{row.unit ? <span className="text-muted"> · {row.unit}</span> : null}</span>
               <span className="font-mono text-muted">
                 {v != null ? `${v.toFixed(row.digits)} ${row.unit}`.trim() : "–"}
                 {z != null && (
@@ -215,7 +217,8 @@ export default function PlacePanel({ data, selected, trendVar, hazard, mode = "n
         left={mode === "now" ? <>Which hazard category is {p.name} in today?</> : <>What does it mean for the next 14 days?</>}
         right={<span className="text-muted">risk assessment · valid {fmtDay(risk.valid_from)} → {fmtDay(risk.valid_to)}</span>}
       />
-      <div className="grid grid-cols-4 gap-1.5">
+      {/* 2 × 2: at 440 px four in a row clipped the severity / exposure values and their units */}
+      <div className="grid grid-cols-2 gap-1.5">
         {HAZARDS.map((h) => (
           <HazardCard key={h} hazard={h} now={now} mode={mode} validFrom={risk.valid_from} validTo={risk.valid_to} selected={h === hazard} onPick={() => onHazard(h)} />
         ))}
