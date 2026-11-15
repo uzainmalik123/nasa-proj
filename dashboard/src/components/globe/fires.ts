@@ -70,7 +70,7 @@ const HEAT_MAX_COUNT = 60;
 export const FIRE_HEAT_PAINT = {
   "heatmap-weight": ["/", ["min", ["get", "count"], HEAT_MAX_COUNT], HEAT_MAX_COUNT] as ExpressionSpecification,
   "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 2, 18, 4, 28] as ExpressionSpecification,
-  "heatmap-intensity": 1,
+  "heatmap-intensity": 0.55, // 1 saturated the Sahel band to flat cream at world zoom
   "heatmap-color": [
     "interpolate", ["linear"], ["heatmap-density"],
     0, HEAT_COLOURS[0], 0.15, HEAT_COLOURS[1], 0.4, HEAT_COLOURS[2], 0.7, HEAT_COLOURS[3], 1, HEAT_COLOURS[4],
