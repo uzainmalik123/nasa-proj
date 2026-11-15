@@ -34,6 +34,7 @@ export default function GibsControl({ layer, date, valid, onChange }: GibsContro
 
   return (
     <div
+      data-on={layer ? "1" : "0"}
       className="gibs-bar absolute z-10 rounded-2xl border border-white/10 bg-black/55 px-3 py-2 text-[10px] text-muted backdrop-blur"
     >
       <div className="flex flex-wrap items-center gap-2">

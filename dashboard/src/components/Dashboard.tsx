@@ -20,6 +20,7 @@ import { HAZARDS, VARIABLES, type Data, type Hazard, type Mode, type Variable } 
 import type { FlyTarget, GibsLayerKey } from "./globe/Globe";
 import type { Place } from "@/lib/types";
 import { GIBS_LAYERS } from "./globe/Globe";
+import { GIBS_TOGGLE_KEYS } from "./globe/gibs";
 import Continents from "./panels/Continents";
 import Feed from "./panels/Feed";
 import Search from "./globe/Search";
@@ -267,10 +268,10 @@ export default function Dashboard() {
           <span className="brand-mark" aria-hidden />
           <div className="leading-tight">
             <div className="text-[14px] font-semibold tracking-[-0.01em] text-ink">Earth System Trend Detective</div>
-            <div className="text-[10px] text-muted">NASA FIRMS · POWER · GIBS · forecast Open-Meteo</div>
+            <div className="hidden text-[10px] text-muted 2xl:block">NASA FIRMS · POWER · GIBS · forecast Open-Meteo</div>
           </div>
         </div>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <div className="topbar-controls flex min-w-0 flex-1 flex-nowrap items-center gap-2">
           <Search places={places} onPick={(i) => select(i, true)} />
               <Toggle
                 label="mode"
@@ -303,6 +304,13 @@ export default function Dashboard() {
                 options={[["world", "world"], ...continents.map((c): [string, string] => [c, c])]}
                 onChange={(v) => setS((p) => ({ ...p, continent: v === "world" ? null : v }))}
               />
+            <Select
+              label="imagery"
+              value={s.gibsLayer ?? "none"}
+              options={[["none", "none"], ...GIBS_TOGGLE_KEYS.map((k): [string, string] => [k, GIBS_LAYERS[k].short])]}
+              onChange={(v) => setS((p) => ({ ...p, gibsLayer: v === "none" ? null : (v as GibsLayerKey) }))}
+              title="NASA GIBS satellite imagery under the points; pick a date on the bar that appears on the globe"
+            />
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <div
@@ -311,9 +319,9 @@ export default function Dashboard() {
             title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)} · from ${source === "cache" ? "the browser cache" : "the network"}` : undefined}
           >
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
-            {data ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}${pillNote}` : error ? "failed" : `loading ${progress[0]} of ${progress[1]}`}
+            {data ? (<>{live ? "live" : "stale"}<span className="hidden 2xl:inline"> · updated {fmtAge(age)}{pillNote}</span></>) : error ? "failed" : `loading ${progress[0]} of ${progress[1]}`}
           </div>
-          <UtcClock now={now} />
+          <span className="hidden 2xl:inline"><UtcClock now={now} /></span>
         </div>
       </header>
       <div className="relative flex min-h-0 flex-1">
