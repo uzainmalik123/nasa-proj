@@ -203,6 +203,12 @@ state 1 · idle              state 2 · city tapped          state 3 · ≡ tapp
 - **State 3.** ≡ opens a drawer from the left at 74 % width over a 45 % scrim. It is the desktop column re-flowed: the tab strip (icon + label) with **five** tabs, Risk, Trends, Alerts, Regions, Sources; no Place tab, the same five as desktop; the sheet is the place view. Content is the same components as desktop in their column layout; the hazards table hides its sparkline and population columns under 400 px wide **(call)**, which is the only place the "whole data visible" rule bends, and those two values are in the sheet. The source-status strip is pinned at the drawer's bottom. Tapping a row closes the drawer, flies the globe and opens the sheet. Tapping the scrim or swiping left closes it.
 - Transitions: sheet and drawer 240 ms ease-out; the stage resize and the fly-to run together so the city lands centred as the sheet finishes **(call)**. Reduced-motion users get instant state changes.
 - URL state is identical to desktop; `tab=` maps to the drawer's tab and opens it on load only if the URL names one.
+- **Fire info without hover.** Touch has no hover and people rarely long-press, so the fire tooltip becomes a tap:
+  - Tapping hit-tests a 24 px box around the finger (fire dots are 3–11 px, too small to hit exactly). A watched place inside the box wins and opens the sheet as usual; otherwise the nearest fire dot is picked.
+  - A picked fire shows a **fire chip**: a one-line glass pill just above the timeline pill, with the same facts as the desktop tooltip ("14 detections · max FRP 173 MW · 0.25° cell · VIIRS NOAA-21 · 19:28 UTC"), a small ring drawn around the tapped dot on the globe, and ✕. Tapping elsewhere, panning, or tapping another fire replaces or dismisses it. It never opens the sheet, so it does not cause the layout shift.
+  - If the sheet is already open, the chip sits on the sheet's top edge instead and the sheet stays.
+  - At world zoom (heatmap, §6.1) a tap on the glow shows the chip for the busiest fire cell within the box with "cell with most detections near here", so the heatmap is not a dead surface **(call)**.
+  - The same tap rule applies to any touch device at any width, including tablets on the desktop layout **(call)**; mouse users keep hover.
 - Touch targets ≥ 44 px on the tab strip, chips, ✕, play button and knob. The timeline knob gets a 28 px invisible hit area.
 - The heatmap (§6.1 band 1) is what makes state 1 worth looking at; mobile should ship after F1.
 
