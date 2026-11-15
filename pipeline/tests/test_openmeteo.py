@@ -158,3 +158,39 @@ def test_ban_with_old_cache_fails(cache, monkeypatch):
     monkeypatch.setattr(openmeteo, "fetch_batch", banned)
     with pytest.raises(RuntimeError, match="rate limited"):
         openmeteo.run(PLACES, "20991231T0000Z")
+
+
+def test_incremental_fetch_gives_new_places_the_history(cache, monkeypatch):
+    # PRD M9: a place the previous file does not know gets past_days=92 in its own batch
+    now = datetime.now(UTC)
+    _prev_file(cache, 7, now)
+    seen = []
+
+    def fake_fetch(batch, pacer, model=None, past_days=2):
+        seen.append((tuple(p for p, _, _ in batch), past_days))
+        return [_frame(pid, now.date(), start=-past_days) for pid, _, _ in batch]
+
+    monkeypatch.setattr(openmeteo, "fetch_batch", fake_fetch)
+    places = pd.concat([PLACES, pd.DataFrame({"id": ["c-pk"], "lat": [3.0], "lon": [3.0]})])
+    res = openmeteo.run(places, "20991231T0000Z")
+    assert sorted(seen) == [(("a-aa", "b-bb"), 2), (("c-pk",), openmeteo.PAST_DAYS)]
+    out = pd.read_parquet(res["path"])
+    assert out.groupby("place_id").size().to_dict() == {"a-aa": 108, "b-bb": 108, "c-pk": 108}
+
+
+def test_reuse_fetches_places_absent_from_the_cached_run(cache, monkeypatch):
+    now = datetime.now(UTC)
+    rid = _prev_file(cache, 3, now)
+    seen = []
+
+    def fake_fetch(batch, pacer, model=None, past_days=2):
+        seen.append((tuple(p for p, _, _ in batch), past_days))
+        return [_frame(pid, now.date(), start=-past_days) for pid, _, _ in batch]
+
+    monkeypatch.setattr(openmeteo, "fetch_batch", fake_fetch)
+    places = pd.concat([PLACES, pd.DataFrame({"id": ["c-pk"], "lat": [3.0], "lon": [3.0]})])
+    res = openmeteo.run(places, "20991231T0000Z")
+    assert res["reused"] == rid and res["ok"] == 3
+    assert seen == [(("c-pk",), openmeteo.PAST_DAYS)]
+    out = pd.read_parquet(cache / "20991231T0000Z.parquet")
+    assert set(out["place_id"]) == {"a-aa", "b-bb", "c-pk"}

@@ -7,7 +7,9 @@ from a week before the last cached date so late-filled days (POWER lags ~3
 days and back-fills) get overwritten. ``-999`` becomes null.
 
 Requests are paced at ``POWER_PACE_S`` across ``POWER_WORKERS`` threads and
-retried three times with backoff on 429/5xx.
+retried three times with backoff on 429/5xx. Tier places (PRD M9, ``tier ==
+"pk"``) are refreshed every ``POWER_TIER_REFRESH_H`` hours only (``is_due``),
+which keeps the incremental run inside the G1 budget.
 """
 
 from __future__ import annotations
@@ -89,8 +91,36 @@ def fetch(lat: float, lon: float, start: date, end: date, pacer: Pacer, label: s
     return parse(r.json())
 
 
-def update_place(place_id: str, lat: float, lon: float, today: date, pacer: Pacer) -> dict:
+def is_due(tier, cached: pd.DataFrame | None, today: date, hour: int) -> bool:
+    """Global places (``tier`` null) every run. A tier place (PRD M9 ``"pk"``)
+    only on runs whose UTC hour divides by ``POWER_TIER_REFRESH_H`` (every 2nd
+    cron run, PRD §13.2's refresh pattern), unless it has no cache or its
+    newest day would fail G2 (POWER through ``G3_POWER_MAX_AGE_D`` days ago).
+    """
+    if tier is None or pd.isna(tier):
+        return True
+    if cached is None or cached.empty:
+        return True
+    if hour % config.POWER_TIER_REFRESH_H == 0:
+        return True
+    newest = pd.Timestamp(cached["date"].max()).date()
+    return (today - newest).days > config.G3_POWER_MAX_AGE_D
+
+
+def update_place(
+    place_id: str,
+    lat: float,
+    lon: float,
+    today: date,
+    pacer: Pacer,
+    tier=None,
+    hour: int = 0,
+) -> dict:
     cached = read_cache(place_id)
+    if not is_due(tier, cached, today, hour):
+        assert cached is not None
+        newest = cached["date"].max()
+        return {"place_id": place_id, "rows": len(cached), "newest": newest, "fetched": 0}
     if cached is None or cached.empty:
         start = FIRST_START
         cached = pd.DataFrame(columns=SCHEMA)
@@ -113,14 +143,24 @@ def update_place(place_id: str, lat: float, lon: float, today: date, pacer: Pace
 def run(places: pd.DataFrame, pace_s: float = config.POWER_PACE_S) -> dict:
     """Update every place's cache. Returns a summary dict for freshness.json."""
     POWER_DIR.mkdir(parents=True, exist_ok=True)
-    today = datetime.now(UTC).date()
+    now = datetime.now(UTC)
+    today, hour = now.date(), now.hour
     pacer = Pacer(pace_s)
     results: list[dict] = []
     failures: list[str] = []
     started = datetime.now(UTC)
     with ThreadPoolExecutor(max_workers=max(1, WORKERS)) as ex:
         futs = {
-            ex.submit(update_place, p.id, float(p.lat), float(p.lon), today, pacer): p.id
+            ex.submit(
+                update_place,
+                p.id,
+                float(p.lat),
+                float(p.lon),
+                today,
+                pacer,
+                getattr(p, "tier", None),
+                hour,
+            ): p.id
             for p in places.itertuples(index=False)
         }
         for i, f in enumerate(as_completed(futs), 1):
@@ -135,9 +175,11 @@ def run(places: pd.DataFrame, pace_s: float = config.POWER_PACE_S) -> dict:
                 log.info("power %d/%d places · %.0fs · %d failed", i, len(futs), el, len(failures))
     newest = max((r["newest"] for r in results if r["newest"] is not None), default=None)
     total_rows = sum(r["rows"] for r in results)
+    skipped = sum(1 for r in results if r["fetched"] == 0)
     log.info(
-        "power done: %d ok, %d failed, %d rows, newest %s",
+        "power done: %d ok (%d tier places not due, cache kept), %d failed, %d rows, newest %s",
         len(results),
+        skipped,
         len(failures),
         total_rows,
         newest,

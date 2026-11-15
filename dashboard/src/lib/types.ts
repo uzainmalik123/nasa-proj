@@ -33,6 +33,8 @@ export interface Place {
   pop: number;
   radius_km: number;
   capital: boolean;
+  /** M9: "pk" for the dense Pakistan tier (30 km radius); null / absent = the global tier. */
+  tier?: "pk" | null;
 }
 export interface PlacesFile { meta: Meta; places: Place[] }
 

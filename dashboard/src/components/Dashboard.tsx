@@ -51,13 +51,17 @@ export interface AppState {
   gibsDate: string | null;
 }
 
+/** ?region=pk opens on the dense Pakistan tier (PRD M9): the globe flies to the region's centre and zoom. */
+const REGIONS: Record<string, FlyTarget> = { pk: { lon: 69.35, lat: 30.4, zoom: 4.5 } };
+
 const DEFAULT_MODE: Mode = "next14";
 const DEFAULT_HAZARD: Hazard = "wildfire";
 const DEFAULT_TREND: Variable = "rain_mm";
 
 /**
  * URL → state (PRD M7). `?place=<id>&hazard=&mode=now|next14&trend=<variable>`
- * plus `globe=trend` (lens), `continent=`, `gibs=` and `date=YYYY-MM-DD`.
+ * plus `globe=trend` (lens), `continent=`, `gibs=` and `date=YYYY-MM-DD`, and
+ * `region=pk` (M9, a one-off fly-to; not written back by writeUrl).
  * Legacy day-1 params still parse: `var=` (implies `globe=trend`) and
  * `selected=<index>`.
  */
@@ -79,7 +83,7 @@ function readUrl(): AppState {
     selected: sel != null && sel !== "" && Number.isFinite(Number(sel)) ? Number(sel) : null,
     pendingPlace: q.get("place") || null,
     continent: q.get("continent") || null,
-    flyTo: null,
+    flyTo: REGIONS[q.get("region") ?? ""] ?? null,
     gibsLayer: gibs && gibs in GIBS_LAYERS ? (gibs as GibsLayerKey) : null,
     gibsDate: q.get("date"),
   };

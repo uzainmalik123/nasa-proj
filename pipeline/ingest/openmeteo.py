@@ -19,7 +19,9 @@ Quota (open-meteo.com/en/pricing, per IP: 10,000 calls/day, 5,000/h,
 * Now only ``INCR_PAST_DAYS`` past days are fetched (~1.3 calls per place,
   ~700 per run); the older analysis rows are carried over from the previous
   parquet, so the file still spans up to 92 days before today. The 92-day
-  fetch happens only when no previous file has ``MIN_HISTORY_DAYS`` of past rows.
+  fetch happens only when no previous file has ``MIN_HISTORY_DAYS`` of past
+  rows, or, per place, when the previous file does not know the place (a new
+  tier, PRD M9), also when a cached run is otherwise reused.
 * A cached forecast younger than ``MIN_AGE_H`` is reused without any request
   (PRD §10: "forecast every 2nd run"); ``OPENMETEO_MIN_AGE_H=0`` fetches every run.
 * A 429 ban aborts the fetch at once (``_http.RateLimited``) and the newest
@@ -153,11 +155,14 @@ def merge_history(new: pd.DataFrame, prev: pd.DataFrame | None, today: date) -> 
     """``new`` rows plus the previous file's older analysis rows (all-null rows dropped)."""
     if prev is None or prev.empty or new.empty:
         return new
-    first_new = pd.to_datetime(new["date"]).dt.date.min()
+    # per place: a new place fetched with the full history has nothing to carry over
+    first_new = pd.to_datetime(new["date"]).dt.date.groupby(new["place_id"].to_numpy()).min()
+    prev = prev[prev["place_id"].isin(first_new.index)]
     floor = today - timedelta(days=PAST_DAYS)
-    old_dates = pd.to_datetime(prev["date"]).dt.date
-    keep = prev[(old_dates < first_new) & (old_dates >= floor) & prev[VALUES].notna().any(axis=1)]
-    keep = keep[keep["place_id"].isin(set(new["place_id"]))]
+    old_dates = pd.to_datetime(prev["date"]).dt.date.to_numpy()
+    cut = prev["place_id"].map(first_new).to_numpy()
+    has_value = prev[VALUES].notna().any(axis=1).to_numpy()
+    keep = prev[(old_dates < cut) & (old_dates >= floor) & has_value]
     out = pd.concat([keep[SCHEMA], new[SCHEMA]], ignore_index=True)
     return out.drop_duplicates(["place_id", "date"], keep="last")
 
@@ -211,6 +216,75 @@ def fill_missing_days(
     return out, {"places": len(want), "rows": len(patch), "unfilled": left}
 
 
+Triple = tuple[str, float, float]
+
+
+def _jobs(
+    triples: list[Triple], past_days: int, known: set[str] | None
+) -> tuple[list[tuple[list[Triple], int]], int]:
+    """Batches of ``BATCH`` places with their ``past_days``. On an incremental
+    fetch, places absent from the previous file (``known``; a new tier, PRD
+    M9) get the one-time ``PAST_DAYS`` history in batches of their own."""
+    size = max(1, BATCH)
+    if known is None or past_days >= PAST_DAYS:
+        old, new = triples, []
+    else:
+        old = [t for t in triples if t[0] in known]
+        new = [t for t in triples if t[0] not in known]
+    jobs = [(old[i : i + size], past_days) for i in range(0, len(old), size)]
+    jobs += [(new[i : i + size], PAST_DAYS) for i in range(0, len(new), size)]
+    return jobs, len(new)
+
+
+def _fetch_batches(
+    jobs: list[tuple[list[Triple], int]], pacer: Pacer, started: datetime, total: int
+) -> tuple[list[pd.DataFrame], list[str], RateLimited | None]:
+    """Run every (batch, past_days) job in parallel. Returns one frame per
+    place fetched, the ids given up on, and the ban that stopped the rest."""
+    parts: list[pd.DataFrame] = []
+    failures: list[str] = []
+    banned: RateLimited | None = None
+    done = 0
+    with ThreadPoolExecutor(max_workers=max(1, WORKERS)) as ex:
+        futs = {ex.submit(fetch_batch, b, pacer, None, pdays): (b, pdays) for b, pdays in jobs}
+        for f in as_completed(futs):
+            batch, pdays = futs[f]
+            try:
+                parts.extend(f.result())
+            except CancelledError:
+                continue
+            except RateLimited as e:
+                if banned is None:
+                    banned = e
+                    log.error("open-meteo quota ban, stopping: %s", e)
+                    for g in futs:
+                        g.cancel()
+                continue
+            except Exception as e:
+                # isolate the bad place(s): retry the batch one by one
+                log.warning(
+                    "batch %s..%s failed (%s); retrying singly", batch[0][0], batch[-1][0], e
+                )
+                for pid, lat, lon in batch:
+                    try:
+                        parts.append(fetch_batch([(pid, lat, lon)], pacer, None, pdays)[0])
+                    except RateLimited as e1:
+                        banned = banned or e1
+                        break
+                    except Exception as e1:
+                        failures.append(pid)
+                        log.error("%s: giving up after retries: %s", pid, e1)
+            done += len(batch)
+            log.info(
+                "forecast %d/%d places · %.0fs · %d failed",
+                done,
+                total,
+                (datetime.now(UTC) - started).total_seconds(),
+                len(failures),
+            )
+    return parts, failures, banned
+
+
 # ---- stage -------------------------------------------------------------------
 
 
@@ -221,13 +295,31 @@ def _reuse(
     t = run_time(path.stem)
     log.warning("forecast: reusing %s (%s, retrieved %s)", path.name, why, t.strftime("%H:%MZ"))
     df = pd.read_parquet(path)
+    changed = False
+    # places the cached run does not know (a new tier, PRD M9): history fetch now
+    have = set(df["place_id"])
+    absent = [t for t in triples if t[0] not in have]
+    if absent:
+        jobs, _ = _jobs(absent, PAST_DAYS, None)
+        parts, failed, banned = _fetch_batches(jobs, Pacer(PACE_S), datetime.now(UTC), len(absent))
+        if parts:
+            df = pd.concat([df[SCHEMA], *(p[SCHEMA] for p in parts)], ignore_index=True)
+            changed = True
+        log.info(
+            "forecast: %d places absent from the cached run; fetched %d, %d failed%s",
+            len(absent),
+            len(parts),
+            len(failed),
+            f", banned: {banned}" if banned else "",
+        )
     filled = {"places": 0, "rows": 0, "unfilled": 0}
     if not missing_forecast_rows(df, today).empty:
         df, filled = fill_missing_days(df, triples, today, Pacer(PACE_S))
-        if filled["rows"]:
-            path = FORECAST_DIR / f"{run_id}.parquet"
-            df.sort_values(["place_id", "date"]).to_parquet(path, index=False)
-            log.info("forecast: cached run + fill written → %s", path.name)
+        changed = changed or bool(filled["rows"])
+    if changed:
+        path = FORECAST_DIR / f"{run_id}.parquet"
+        df.sort_values(["place_id", "date"]).to_parquet(path, index=False)
+        log.info("forecast: cached run + additions written → %s", path.name)
     return {
         "ok": int(df["place_id"].nunique()),
         "failed": [],
@@ -256,59 +348,22 @@ def run(places: pd.DataFrame, run_id: str) -> dict:
 
     prev = pd.read_parquet(prev_path) if prev_path else None
     past_days = PAST_DAYS
+    known: set[str] | None = None
     if prev is not None and past_coverage(prev, today) >= MIN_HISTORY_DAYS:
         past_days = INCR_PAST_DAYS
+        known = set(prev["place_id"])
     pacer = Pacer(PACE_S)
-    parts: list[pd.DataFrame] = []
-    failures: list[str] = []
-    banned: RateLimited | None = None
-    size = max(1, BATCH)
-    batches = [triples[i : i + size] for i in range(0, len(triples), size)]
-    done = 0
+    jobs, n_new = _jobs(triples, past_days, known)
     log.info(
-        "forecast: %d places in %d batches · past_days %d · previous %s",
+        "forecast: %d places in %d batches · past_days %d (%d new places at %d) · previous %s",
         len(triples),
-        len(batches),
+        len(jobs),
         past_days,
+        n_new,
+        PAST_DAYS,
         prev_path.name if prev_path else "none",
     )
-    with ThreadPoolExecutor(max_workers=max(1, WORKERS)) as ex:
-        futs = {ex.submit(fetch_batch, b, pacer, None, past_days): b for b in batches}
-        for f in as_completed(futs):
-            batch = futs[f]
-            try:
-                parts.extend(f.result())
-            except CancelledError:
-                continue
-            except RateLimited as e:
-                if banned is None:
-                    banned = e
-                    log.error("open-meteo quota ban, stopping: %s", e)
-                    for g in futs:
-                        g.cancel()
-                continue
-            except Exception as e:
-                # isolate the bad place(s): retry the batch one by one
-                log.warning(
-                    "batch %s..%s failed (%s); retrying singly", batch[0][0], batch[-1][0], e
-                )
-                for pid, lat, lon in batch:
-                    try:
-                        parts.append(fetch_batch([(pid, lat, lon)], pacer, None, past_days)[0])
-                    except RateLimited as e1:
-                        banned = banned or e1
-                        break
-                    except Exception as e1:
-                        failures.append(pid)
-                        log.error("%s: giving up after retries: %s", pid, e1)
-            done += len(batch)
-            log.info(
-                "forecast %d/%d places · %.0fs · %d failed",
-                done,
-                len(triples),
-                (datetime.now(UTC) - started).total_seconds(),
-                len(failures),
-            )
+    parts, failures, banned = _fetch_batches(jobs, pacer, started, len(triples))
     if banned is not None:
         if prev_path and prev_age_h <= config.G3_FORECAST_MAX_AGE_H:
             why = f"rate limited for {banned.retry_after} s"

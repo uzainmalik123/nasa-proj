@@ -1,0 +1,132 @@
+gid,name,province,lat,lon,pop,pop_source
+Z06.1.1.1_1,Bagh,Azad Kashmir,33.9732,73.8857,371000,census-2017-rounded
+Z06.1.1.2_1,Bhimber,Azad Kashmir,33.0169,74.1131,421000,census-2017-rounded
+Z06.1.1.3_1,Kotli,Azad Kashmir,33.4574,73.886,774000,census-2017-rounded
+Z06.1.1.4_1,Mirpur,Azad Kashmir,33.2195,73.707,456000,census-2017-rounded
+Z06.1.1.5_1,Muzaffarabad,Azad Kashmir,34.3077,73.6622,650000,census-2017-rounded
+Z06.1.1.6_1,Neelum,Azad Kashmir,34.8289,74.4646,191000,census-2017-rounded
+Z06.1.1.7_1,Poonch,Azad Kashmir,33.8137,73.7953,501000,census-2017-rounded
+Z06.1.1.8_1,Sudhnoti,Azad Kashmir,33.7092,73.6914,298000,census-2017-rounded
+PAK.2.1.1_1,Awaran,Balochistan,26.2654,65.3598,121680,census-2017
+PAK.2.6.1_1,Barkhan,Balochistan,29.9588,69.5971,171556,census-2017
+PAK.2.4.1_1,Chagai,Balochistan,29.0333,63.58,226008,census-2017
+PAK.2.5.1_1,Dera Bugti,Balochistan,28.9501,69.0274,312603,census-2017
+PAK.2.2.1_1,Gwadar,Balochistan,25.4166,63.1644,263514,census-2017
+PAK.2.3.2_1,Jaffarabad,Balochistan,28.2756,68.1495,513813,census-2017
+PAK.2.3.3_1,Jhal Magsi,Balochistan,28.3867,67.5531,149225,census-2017
+PAK.2.3.1_1,Kachhi,Balochistan,29.1857,67.7334,237030,census-2017
+PAK.2.1.4_1,Kalat,Balochistan,28.7853,66.4496,412232,census-2017
+PAK.2.2.2_1,Kech,Balochistan,26.0169,63.0714,909116,census-2017
+PAK.2.1.5_1,Kharan,Balochistan,27.9554,64.6405,156152,census-2017
+PAK.2.1.6_1,Khuzdar,Balochistan,27.5001,66.7013,802207,census-2017
+PAK.2.4.3_1,Killa Abdullah,Balochistan,30.8948,66.7708,757578,census-2017
+PAK.2.6.4_1,Killa Saifullah,Balochistan,30.8955,68.3549,342814,census-2017
+PAK.2.5.2_1,Kohlu,Balochistan,29.5841,68.8288,214350,census-2017
+PAK.2.1.7_1,Lasbela,Balochistan,25.812,66.653,574292,census-2017
+PAK.2.6.2_1,Loralai,Balochistan,30.3079,68.7488,397400,census-2017
+PAK.2.1.8_1,Mastung,Balochistan,29.5921,67.0136,266461,census-2017
+PAK.2.6.3_1,Musakhel,Balochistan,30.845,69.8657,167017,census-2017
+PAK.2.3.4_1,Nasirabad,Balochistan,28.6208,68.1337,490538,census-2017
+PAK.2.2.3_1,Panjgur,Balochistan,26.7471,64.1894,316385,census-2017
+PAK.2.4.2_1,Pishin,Balochistan,30.6563,67.0838,736481,census-2017
+PAK.2.4.4_1,Quetta,Balochistan,30.133,66.7704,2275699,census-2017
+PAK.2.5.3_1,Sibi,Balochistan,29.889,67.9163,135572,census-2017
+PAK.2.6.5_1,Zhob,Balochistan,31.4163,69.0126,310544,census-2017
+PAK.2.5.4_1,Ziarat,Balochistan,30.4255,67.5518,160422,census-2017
+Z06.6.1.1_1,Diamer,Gilgit-Baltistan,35.4165,74.3164,270000,census-2017-rounded
+Z06.6.1.2_1,Gilgit,Gilgit-Baltistan,36.3749,74.2972,330000,census-2017-rounded
+Z06.6.1.3_1,Gilgit (Tribal Territory),Gilgit-Baltistan,35.758,73.6961,200000,census-2017-rounded
+PAK.4.1.1_1,Islamabad,Islamabad,33.6692,73.0666,2006572,census-2017
+PAK.5.4.1_1,Abbottabad,Khyber Pakhtunkhwa,34.1228,73.2528,1332912,census-2017
+PAK.5.3.1_1,Adam Khel,Khyber Pakhtunkhwa,33.678,71.6363,118578,census-2017
+PAK.3.1.1_1,Bajaur,Khyber Pakhtunkhwa,34.7508,71.5025,1093684,census-2017
+PAK.5.1.1_1,Bannu,Khyber Pakhtunkhwa,32.9148,70.6709,1167892,census-2017
+PAK.5.4.2_1,Batagram,Khyber Pakhtunkhwa,34.8073,73.1485,476612,census-2017
+PAK.5.3.2_1,Bhittani,Khyber Pakhtunkhwa,32.4642,70.2728,36389,census-2017
+PAK.5.7.1_1,Buner,Khyber Pakhtunkhwa,34.4584,72.5119,897319,census-2017
+PAK.5.8.1_1,Charsadda,Khyber Pakhtunkhwa,34.2447,71.7371,1616198,census-2017
+PAK.5.6.1_1,Chitral,Khyber Pakhtunkhwa,36.2275,72.2365,447362,census-2017
+PAK.5.2.1_1,Dera Ismail Khan,Khyber Pakhtunkhwa,31.8669,70.683,1627132,census-2017
+PAK.5.6.2_1,Dir,Khyber Pakhtunkhwa,35.1368,71.9817,2382338,census-2017
+PAK.5.5.1_1,Hangu,Khyber Pakhtunkhwa,33.4408,70.8705,518798,census-2017
+PAK.5.4.3_1,Haripur,Khyber Pakhtunkhwa,33.9988,72.8967,1003031,census-2017
+PAK.5.5.2_1,Karak,Khyber Pakhtunkhwa,33.1511,71.1282,706299,census-2017
+PAK.3.1.2_1,Khyber,Khyber Pakhtunkhwa,33.9565,71.0606,986973,census-2017
+PAK.5.5.3_1,Kohat,Khyber Pakhtunkhwa,33.4631,71.5652,993874,census-2017
+PAK.5.4.4_1,Kohistan,Khyber Pakhtunkhwa,35.3485,73.1892,784711,census-2017
+PAK.3.1.3_1,Kurram,Khyber Pakhtunkhwa,33.7051,70.3402,619553,census-2017
+PAK.5.1.2_1,Lakki Marwat,Khyber Pakhtunkhwa,32.5913,70.8418,876182,census-2017
+PAK.5.6.3_1,Malakand,Khyber Pakhtunkhwa,34.5401,71.9005,720295,census-2017
+PAK.5.4.5_1,Mansehra,Khyber Pakhtunkhwa,34.7015,73.4119,1556460,census-2017
+PAK.5.7.2_1,Mardan,Khyber Pakhtunkhwa,34.3097,72.0967,2373061,census-2017
+PAK.3.1.5_1,Mohmand,Khyber Pakhtunkhwa,34.4577,71.3552,466984,census-2017
+PAK.3.1.6_1,North Waziristan,Khyber Pakhtunkhwa,32.9498,69.9947,543254,census-2017
+PAK.5.8.2_1,Nowshera,Khyber Pakhtunkhwa,33.9219,71.9769,1518540,census-2017
+PAK.3.1.7_1,Orakzai,Khyber Pakhtunkhwa,33.6993,71.0135,254356,census-2017
+PAK.5.8.3_1,Peshawar,Khyber Pakhtunkhwa,33.9746,71.5631,4269079,census-2017
+PAK.5.6.4_1,Shangla,Khyber Pakhtunkhwa,34.8094,72.7266,757810,census-2017
+PAK.3.1.4_1,Sherani,Khyber Pakhtunkhwa,31.5517,70.1117,153116,census-2017
+PAK.3.1.8_1,South Waziristan,Khyber Pakhtunkhwa,32.3933,69.8458,679185,census-2017
+PAK.5.7.3_1,Swabi,Khyber Pakhtunkhwa,34.1364,72.4684,1624616,census-2017
+PAK.5.6.5_1,Swat,Khyber Pakhtunkhwa,35.2549,72.4612,2309570,census-2017
+PAK.5.2.2_1,Tank,Khyber Pakhtunkhwa,32.248,70.3901,391885,census-2017
+PAK.7.7.1_1,Attock,Punjab,33.4835,72.2992,1883556,census-2017
+PAK.7.1.1_1,Bahawalnagar,Punjab,29.6428,73.0633,2981919,census-2017
+PAK.7.1.2_1,Bahawalpur,Punjab,28.8124,71.7347,3668106,census-2017
+PAK.7.8.1_1,Bhakkar,Punjab,31.6539,71.407,1650518,census-2017
+PAK.7.7.2_1,Chakwal,Punjab,32.8937,72.5061,1495982,census-2017
+PAK.7.2.1_1,Dera Ghazi Khan,Punjab,30.0731,70.2344,2872201,census-2017
+PAK.7.3.1_1,Faisalabad,Punjab,31.2357,73.1211,7873910,census-2017
+PAK.7.4.2_1,Gujranwala,Punjab,32.0453,74.1344,5014196,census-2017
+PAK.7.4.1_1,Gujrat,Punjab,32.7276,73.9609,2756110,census-2017
+PAK.7.4.5_1,Hafizabad,Punjab,32.026,73.496,1156957,census-2017
+PAK.7.3.2_1,Jhang,Punjab,31.3142,72.3404,2743416,census-2017
+PAK.7.7.3_1,Jhelum,Punjab,32.8338,73.2739,1222650,census-2017
+PAK.7.5.1_1,Kasur,Punjab,31.0455,74.1349,3454996,census-2017
+PAK.7.6.1_1,Khanewal,Punjab,30.3562,72.0158,2921986,census-2017
+PAK.7.8.2_1,Khushab,Punjab,32.1721,72.0704,1281299,census-2017
+PAK.7.5.2_1,Lahore,Punjab,31.4681,74.3541,11126285,census-2017
+PAK.7.2.2_1,Layyah,Punjab,30.9814,71.248,1824230,census-2017
+PAK.7.6.2_1,Lodhran,Punjab,29.6432,71.7314,1700620,census-2017
+PAK.7.8.3_1,Mianwali,Punjab,32.6628,71.5248,1546094,census-2017
+PAK.7.6.3_1,Multan,Punjab,29.8998,71.4102,4745109,census-2017
+PAK.7.2.3_1,Muzaffargarh,Punjab,30.0258,71.0286,4322009,census-2017
+PAK.7.5.3_1,Nankana Sahib,Punjab,31.4837,73.6376,1356374,census-2017
+PAK.7.4.6_1,Narowal,Punjab,32.2667,75.0887,1709757,census-2017
+PAK.7.5.4_1,Okara,Punjab,30.6037,73.788,3039139,census-2017
+PAK.7.6.4_1,Pakpattan,Punjab,30.3011,73.218,1823687,census-2017
+PAK.7.1.3_1,Rahimyar Khan,Punjab,28.3981,70.513,4814006,census-2017
+PAK.7.2.4_1,Rajan Pur,Punjab,29.1371,70.1626,1995958,census-2017
+PAK.7.7.4_1,Rawalpindi,Punjab,33.4749,73.1606,5405633,census-2017
+PAK.7.6.5_1,Sahiwal,Punjab,30.537,72.8731,2517560,census-2017
+PAK.7.8.4_1,Sargodha,Punjab,32.1003,72.7186,3703588,census-2017
+PAK.7.5.6_1,Sheikhupura,Punjab,31.7291,74.1105,3460426,census-2017
+PAK.7.4.8_1,Sialkot,Punjab,32.4301,74.494,3893672,census-2017
+PAK.7.3.3_1,Toba Tek Singh,Punjab,30.8786,72.5275,2190015,census-2017
+PAK.7.6.6_1,Vehari,Punjab,29.9863,72.377,2897446,census-2017
+PAK.8.1.1_1,Badin,Sindh,24.7201,68.8643,1804516,census-2017
+PAK.8.1.2_1,Dadu,Sindh,26.8277,67.551,1550266,census-2017
+PAK.8.6.1_1,Ghotki,Sindh,27.8326,69.6758,1646318,census-2017
+PAK.8.1.3_1,Hyderabad,Sindh,25.3758,68.5308,2199463,census-2017
+PAK.8.3.1_1,Jacobabad,Sindh,28.2338,68.5994,1006297,census-2017
+PAK.8.1.4_1,Jamshoro,Sindh,25.6625,67.8097,993142,census-2017
+PAK.8.2.1_1,Karachi Central,Sindh,24.9533,67.0358,3531335,census-2017-share
+PAK.8.2.2_1,Karachi East,Sindh,24.8923,67.114,3370819,census-2017-share
+PAK.8.2.3_1,Karachi South,Sindh,24.8339,67.039,2086698,census-2017-share
+PAK.8.2.4_1,Karachi West,Sindh,24.9993,66.9597,4654941,census-2017-share
+PAK.8.3.2_1,Kashmore,Sindh,28.2689,69.3104,1089169,census-2017
+PAK.8.6.2_1,Khairpur,Sindh,26.8237,69.0866,2404334,census-2017
+PAK.8.3.3_1,Larkana,Sindh,27.616,67.8547,1524391,census-2017
+PAK.8.2.5_1,Malir,Sindh,25.1394,67.2995,2407728,census-2017-share
+PAK.8.1.5_1,Matiari,Sindh,25.8749,68.4119,769349,census-2017
+PAK.8.4.1_1,Mirpur Khas,Sindh,25.4441,69.4278,1505876,census-2017
+PAK.8.6.3_1,Naushahro Feroze,Sindh,26.8978,68.1412,1612373,census-2017
+PAK.8.6.4_1,Nawabshah,Sindh,26.3571,68.3581,1612847,census-2017
+PAK.8.4.3_1,Sanghar,Sindh,25.9455,69.319,2057057,census-2017
+PAK.8.3.4_1,Shikarpur,Sindh,27.9252,68.6336,1231481,census-2017
+PAK.8.6.5_1,Sukkur,Sindh,27.5144,69.2009,1487903,census-2017
+PAK.8.1.6_1,Tando Allahyar,Sindh,24.9835,68.4699,836887,census-2017
+PAK.8.1.7_1,Tando Muhammad Khan,Sindh,25.4707,68.8128,677228,census-2017
+PAK.8.4.2_1,Tharparkar,Sindh,24.7835,70.1937,1649661,census-2017
+PAK.8.1.8_1,Thatta,Sindh,24.5511,68.0188,979817,census-2017
+PAK.8.4.4_1,Umerkot,Sindh,25.2292,69.744,1073146,census-2017

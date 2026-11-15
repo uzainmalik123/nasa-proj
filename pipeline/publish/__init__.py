@@ -100,8 +100,11 @@ def run(ctx: dict) -> None:
     m = meta(ctx)
 
     # places.json
+    # S1 M9 (contracts change log 2026-11-15): + ``tier``, "pk" for the Pakistan rows, null else
     cols = ["id", "name", "country", "continent", "lat", "lon", "pop", "radius_km", "capital"]
-    recs = places[cols].to_dict(orient="records")
+    frame = places.assign(tier=places["tier"] if "tier" in places else None)[[*cols, "tier"]]
+    frame = frame.astype(object)
+    recs = frame.where(frame.notna(), None).to_dict(orient="records")
     write_json(
         "places.json", {"meta": m, "places": recs}, out_dir, n_places=n, per_place=["places"]
     )

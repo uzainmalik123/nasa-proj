@@ -14,7 +14,7 @@ Three jobs:
            max come from ``MODIS_NRT`` instead. Fetched chunks are recorded in
            ``firms/_history.json`` and skipped on later runs.
 (c) counts  every cached MODIS row (``type`` 0 = vegetation fire; NRT rows carry
-           no ``type`` and are kept) joined to places within ``RADIUS_KM`` with a
+           no ``type`` and are kept) joined to places within each place's ``radius_km`` with a
            KD-tree on unit vectors → ``firms_counts.parquet``
            (``place_id, date, n, frp_sum``, dense: one row per place per date).
 """
@@ -383,7 +383,9 @@ def counts(places: pd.DataFrame, radius_km: float = config.RADIUS_KM) -> dict:
         return {"rows": 0, "dates": 0, "nonzero": 0}
     tree = cKDTree(unit_vectors(fires["lat"].to_numpy(), fires["lon"].to_numpy()))
     pv = unit_vectors(places["lat"].to_numpy(), places["lon"].to_numpy())
-    hits = tree.query_ball_point(pv, r=chord(radius_km))
+    # per-place radius (the Pakistan tier watches 30 km, PRD M9), else the global one
+    radii = places["radius_km"].to_numpy(dtype=float) if "radius_km" in places else radius_km
+    hits = tree.query_ball_point(pv, r=chord(radii))
     fire_dates = fires["acq_date"].to_numpy()
     fire_frp = fires["frp"].fillna(0.0).to_numpy()
     parts = []
