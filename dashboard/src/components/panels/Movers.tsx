@@ -13,7 +13,7 @@ import { HAZARD_LABEL, fmtDay } from "@/lib/format";
 import { P } from "@/lib/palette";
 import type { Hazard, MoverRow, MoversBlock, Place, RiskFile } from "@/lib/types";
 import { fmtDelta, fmtHeadline } from "./HazardsTable";
-import { Card, DeltaChip, ROW_CLASS, ROW_SELECTED } from "./ui";
+import { Card, DeltaChip, ROW_CLASS, ROW_SELECTED, SkeletonRows, Stamp } from "./ui";
 
 export interface MoversProps {
   places: Place[];
@@ -57,8 +57,8 @@ export default function Movers({ places, risk, hazard, selected, filter, contine
           <span>
             {block ? `${block.up.length} rising · ${block.down.length} falling` : "loading…"}
             {source === "browser" ? ` · computed in the browser${filter ? " for the region" : " (run predates movers)"}` : ` · from run ${risk?.meta.run_id ?? "–"}`}
-            {" · risk assessment"}
           </span>
+          <Stamp valid={risk ? `${risk.valid_from} → ${risk.valid_to}` : "–"} retrieved={risk?.meta.generated_at} kind="risk assessment" />
         </span>
       }
     >
@@ -91,8 +91,9 @@ function Side({ label, colour, rows, hazard, places, selected, continuous, since
         </tr>
       </thead>
       <tbody>
-        {rows.length === 0 && (
-          <tr><td colSpan={5} className="py-3 text-center text-[11px] text-muted">{loaded ? `nothing moved ${label}` : "no risk yet"}</td></tr>
+        {!loaded && <SkeletonRows n={10} cols={5} />}
+        {loaded && rows.length === 0 && (
+          <tr><td colSpan={5} className="py-3 text-center text-[11px] text-muted">nothing moved {label}</td></tr>
         )}
         {rows.map((r, k) => {
           const place = places[r.place];

@@ -30,6 +30,7 @@ import Kpis from "./panels/Kpis";
 import Movers from "./panels/Movers";
 import PlacePanel from "./panels/PlacePanel";
 import ErrorBoundary from "./panels/ErrorBoundary";
+import { BrandBlock, SAFETY, SafetyFooter } from "./Shell";
 import Sources from "./panels/Sources";
 import TrendsTable from "./panels/TrendsTable";
 
@@ -232,9 +233,11 @@ export default function Dashboard() {
     return () => window.removeEventListener("keydown", onKey);
   }, [select]);
 
+  // nothing arrived and the loader gave up: one error card replaces the panels (DESIGN error state)
+  const failed = error != null && data == null;
   const age = ageHours(data?.run.finished ?? data?.run.started, now);
   const live = age != null && age <= 6;
-  const pillColour = data ? (live && probe !== "offline" ? P.good : P.warning) : P.muted;
+  const pillColour = data ? (live && probe !== "offline" ? P.good : P.warning) : error ? P.critical : P.muted;
   const pillNote = probe === "checking" ? " · checking for a newer run" : probe === "offline" ? " · offline, showing the cached run" : "";
 
   const trendsTable = (
@@ -263,13 +266,7 @@ export default function Dashboard() {
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-page text-ink">
       {/* top bar (layout spec §5.1), desktop only; phones keep the overlay title block */}
       <header className="relative z-30 hidden h-14 shrink-0 items-center gap-5 border-b border-border bg-page px-4 lg:flex">
-        <div className="flex min-w-0 shrink-0 items-center gap-2.5">
-          <span className="brand-mark" aria-hidden />
-          <div className="leading-tight">
-            <div className="text-[14px] font-semibold tracking-[-0.01em] text-ink">Earth System Trend Detective</div>
-            <div className="text-[10px] text-muted">NASA FIRMS · POWER · GIBS · forecast Open-Meteo</div>
-          </div>
-        </div>
+        <BrandBlock />
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <Search places={places} onPick={(i) => select(i, true)} />
               <Toggle
@@ -302,6 +299,7 @@ export default function Dashboard() {
                 value={s.continent ?? "world"}
                 options={[["world", "world"], ...continents.map((c): [string, string] => [c, c])]}
                 onChange={(v) => setS((p) => ({ ...p, continent: v === "world" ? null : v }))}
+                width="w-[118px]"
               />
         </div>
         <div className="flex shrink-0 items-center gap-3">
@@ -311,7 +309,7 @@ export default function Dashboard() {
             title={data ? `run ${data.run.run_id} · finished ${fmtUtc(data.run.finished, true)} · from ${source === "cache" ? "the browser cache" : "the network"}` : undefined}
           >
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
-            {data ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}${pillNote}` : error ? "failed" : `loading ${progress[0]} of ${progress[1]}`}
+            {data ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}${pillNote}` : error ? "could not load data" : `loading ${progress[0]} of ${progress[1]} files`}
           </div>
           <UtcClock now={now} />
         </div>
@@ -359,7 +357,7 @@ export default function Dashboard() {
               <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: pillColour }} />
               {data
                 ? `${live ? "live" : "stale"} · updated ${fmtAge(age)}${pillNote}`
-                : error ? "failed" : `loading ${progress[0]} of ${progress[1]} files`}
+                : error ? "could not load data" : `loading ${progress[0]} of ${progress[1]} files`}
             </div>
           </div>
 
@@ -448,7 +446,8 @@ export default function Dashboard() {
           ))}
         </nav>
         <div key={tab} className="sidebar-scroll tab-pane flex min-h-0 flex-1 flex-col gap-3 p-3">
-          {tab === "risk" && (<>
+          {failed && <LoadError error={error!} />}
+          {!failed && tab === "risk" && (<>
             <Kpis data={data} filter={filter} />
             {hazardsTable}
             <Movers
@@ -461,11 +460,11 @@ export default function Dashboard() {
               onPick={(i) => select(i, true)}
             />
           </>)}
-          {tab === "trends" && trendsTable}
-          {tab === "alerts" && (
+          {!failed && tab === "trends" && trendsTable}
+          {!failed && tab === "alerts" && (
             <Feed feed={data?.feed ?? null} places={places} selected={s.selected} hazard={s.hazard} filter={filter} onPick={pickAlert} />
           )}
-          {tab === "regions" && (
+          {!failed && tab === "regions" && (
             <Continents
               places={places}
               risk={data?.risk ?? null}
@@ -474,22 +473,24 @@ export default function Dashboard() {
               onPick={(continent) => setS((p) => ({ ...p, continent }))}
             />
           )}
-          {tab === "sources" && (<>
+          {!failed && tab === "sources" && (<>
             <p className="px-1 text-[11.5px] leading-snug text-ink-2">
               {data ? `${fmtCount(places.length)} places on watch. ` : ""}Trends and 14-day hazard risk from NASA FIRMS, POWER and GIBS, forecast by Open-Meteo. Click a place on the globe, a row or an alert to open its full story.
             </p>
             <Freshness freshness={data?.freshness ?? null} run={data?.run ?? null} />
             <Sources freshness={data?.freshness ?? null} trends={data?.trends ?? null} risk={data?.risk ?? null} />
             <Honesty honesty={data?.honesty ?? null} />
-            <footer className="px-1 pb-1 text-[10px] leading-snug text-muted">
+            <p className="px-1 text-[10px] leading-snug text-muted">
               Observation (NASA POWER, FIRMS, GIBS), forecast (Open-Meteo), trend (Mann-Kendall) and risk assessment (our
-              hazard modules) are four different things and are labelled as such. Informational tool, not an official
-              warning service. Follow local authorities.
-            </footer>
+              hazard modules) are four different things and are labelled as such.
+            </p>
           </>)}
+          {/* phones have no footer bar: the safety statement ends every tab (PRD §7.4) */}
+          <p className="px-1 pb-1 text-[10px] leading-snug text-ink-2 lg:hidden">{SAFETY}</p>
         </div>
       </aside>
       </div>
+      <SafetyFooter />
 
       {/* KI-18 interim: phone view switch, bottom-centre over everything; gone at lg */}
       <div
@@ -513,6 +514,27 @@ export default function Dashboard() {
         ))}
       </div>
     </div>
+  );
+}
+
+/** Error state (DESIGN §2 tokens): a card in the left column naming what failed, with a retry. */
+function LoadError({ error }: { error: string }) {
+  return (
+    <section role="alert" className="rounded-[14px] border bg-surface px-4 py-3.5" style={{ borderColor: `${P.critical}66` }}>
+      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: P.critical }}>Could not load the data</h2>
+      <p className="text-[11.5px] leading-snug text-ink-2">
+        The dashboard reads nine JSON files from the pipeline&apos;s data branch and at least one did not arrive. Nothing on screen is
+        a guess: panels stay empty until the data is in.
+      </p>
+      <p className="mt-2 break-all font-mono text-[10px] text-muted">{error}</p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="mt-3 rounded border border-white/15 bg-surface-2 px-2.5 py-1 text-[11px] text-ink transition hover:border-white/30"
+      >
+        Retry
+      </button>
+    </section>
   );
 }
 
@@ -544,8 +566,10 @@ function Toggle<T extends string>({ label, value, options, onChange }: {
 }
 
 /** `active` marks the select that currently colours the globe (an accent dot before the label). */
-function Select<T extends string>({ label, value, options, onChange, active, title }: {
+function Select<T extends string>({ label, value, options, onChange, active, title, width }: {
   label: string; value: T; options: [T, string][]; onChange: (v: T) => void; active?: boolean; title?: string;
+  /** fixed width class, for a select whose options arrive with the data (no jump on load) */
+  width?: string;
 }) {
   return (
     <label className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted" title={title}>
@@ -559,7 +583,7 @@ function Select<T extends string>({ label, value, options, onChange, active, tit
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="rounded border border-white/15 bg-surface-2 px-1 py-0.5 text-[11px] normal-case tracking-normal text-ink"
+        className={`rounded border border-white/15 bg-surface-2 px-1 py-0.5 text-[11px] normal-case tracking-normal text-ink ${width ?? ""}`}
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>{l}</option>

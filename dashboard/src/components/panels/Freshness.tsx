@@ -39,7 +39,7 @@ export default function Freshness({ freshness, run }: { freshness: FreshnessFile
         run ? (
           <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
             <span>
-              run {run.run_id} · generated {fmtUtc(run.finished, true)} · {run.duration_s} s ·{" "}
+              run {run.run_id} · retrieved {fmtUtc(run.finished, true)} · {run.duration_s} s ·{" "}
               {failed.length
                 ? `failed ${failed.join(", ")}`
                 : `${gates.filter(([, g]) => g.pass === true).length}/${gates.filter(([, g]) => g.pass != null).length} gates pass`}
@@ -55,9 +55,9 @@ export default function Freshness({ freshness, run }: { freshness: FreshnessFile
         <thead>
           <tr className="h-6 text-[10px] uppercase tracking-wide text-muted">
             <th className="text-left font-normal">source</th>
-            <th className="text-right font-normal">last fetch</th>
-            <th className="text-right font-normal">budget</th>
-            <th className="text-right font-normal">records</th>
+            <th className="whitespace-nowrap pl-3 text-right font-normal">last fetch</th>
+            <th className="whitespace-nowrap pl-3 text-right font-normal">budget</th>
+            <th className="whitespace-nowrap pl-3 text-right font-normal">records</th>
             <th className="w-5 font-normal" aria-label="status" />
           </tr>
         </thead>
@@ -73,9 +73,9 @@ export default function Freshness({ freshness, run }: { freshness: FreshnessFile
                   <a href={s.url} target="_blank" rel="noreferrer" className="hover:underline">{s.name}</a>
                   <span className="ml-1 text-muted">{s.product}</span>
                 </td>
-                <td className="text-right font-mono text-ink-2" title={fmtUtc(s.retrieved_at, true)}>{fmtAge(f.age)}</td>
-                <td className="text-right font-mono text-muted">{f.budgetH >= 48 ? `${f.budgetH / 24} d` : `${f.budgetH} h`}</td>
-                <td className="text-right font-mono text-ink-2">{fmtCount(s.records)}</td>
+                <td className="whitespace-nowrap pl-3 text-right font-mono text-ink-2" title={fmtUtc(s.retrieved_at, true)}>{fmtAge(f.age)}</td>
+                <td className="whitespace-nowrap pl-3 text-right font-mono text-muted">{f.budgetH >= 48 ? `${f.budgetH / 24} d` : `${f.budgetH} h`}</td>
+                <td className="whitespace-nowrap pl-3 text-right font-mono text-ink-2">{fmtCount(s.records)}</td>
                 <td className="text-right">
                   <StatusDot
                     status={f.status}

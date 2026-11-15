@@ -62,11 +62,10 @@ function FireRow({ fires, zoom }: { fires: FiresFile | null; zoom: number }) {
           <span className="inline-block h-2 w-10 rounded-sm" style={{ backgroundImage: heatGradient }} />
           <span>active fires · density of VIIRS detections, last 24 h</span>
         </div>
-        {fires && (
-          <div className="mt-0.5 text-muted">
-            {fireSourceLabel(fires.source)} · FIRMS · newest {fmtAcq(fires.newest_acq)} · zoom in for cells
-          </div>
-        )}
+        {/* the source line is reserved before fires_24h.json arrives, so the legend does not grow on load */}
+        <div className="mt-0.5 min-h-[2lh] text-muted">
+          {fires && <>{fireSourceLabel(fires.source)} · FIRMS · newest {fmtAcq(fires.newest_acq)} · zoom in for cells</>}
+        </div>
       </div>
     );
   }
@@ -92,11 +91,9 @@ function FireRow({ fires, zoom }: { fires: FiresFile | null; zoom: number }) {
       <div className="mt-0.5 text-muted">
         {FIRE_CELL_DEG}° cells · {FIRE_SAMPLES.join(" / ")} detections · hover for the count
       </div>
-      {fires && (
-        <div className="text-muted">
-          {fireSourceLabel(fires.source)} · last 24 h · newest {fmtAcq(fires.newest_acq)}
-        </div>
-      )}
+      <div className="min-h-[2lh] text-muted">
+        {fires && <>{fireSourceLabel(fires.source)} · last 24 h · newest {fmtAcq(fires.newest_acq)}</>}
+      </div>
     </div>
   );
 }
@@ -151,7 +148,8 @@ function RiskLegend({ c, ring }: { c: Extract<Colouring, { kind: "risk" }>; ring
   return (
     <div>
       <div className="font-semibold uppercase tracking-[0.08em] text-ink-2">{title}</div>
-      <div className="mb-1.5 text-muted">{sub}</div>
+      {/* two lines reserved: the valid window arrives with risk.json and wraps (no jump on load) */}
+      <div className="mb-1.5 min-h-[2lh] text-muted">{sub}</div>
       {c.continuous ? (
         <>
           <div

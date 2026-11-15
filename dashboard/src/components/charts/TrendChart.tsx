@@ -91,11 +91,12 @@ export default function TrendChart({ long, short, unit, colour, shortNote, heigh
   return (
     <div ref={ref} className="relative">
       <svg width={width} height={height} className="block overflow-visible" role="img" aria-label="trend chart">
-        <Plot b={L} colour={colour} plotH={plotH} labels={xLabelIdx(long.keys.length, 24).map((i) => [i, fmtMonth(long.keys[i])])} />
+        {/* labels start one year in, all centred: a start-anchored first label collided with the second */}
+        <Plot b={L} colour={colour} plotH={plotH} labels={xLabelIdx(long.keys.length - 12, 24).map((i) => [i + 12, fmtMonth(long.keys[i + 12])])} />
         {S && short && (
           <Plot
             b={S} colour={colour} plotH={plotH} inset
-            labels={[0, Math.floor((short.keys.length - 1) / 2), short.keys.length - 1].filter((i, k, a) => a.indexOf(i) === k && short.keys[i]).map((i) => [i, fmtDay(short.keys[i])])}
+            labels={[0, short.keys.length - 1].filter((i, k, a) => a.indexOf(i) === k && short.keys[i]).map((i) => [i, fmtDay(short.keys[i])])}
           />
         )}
         {/* divider between the two windows */}

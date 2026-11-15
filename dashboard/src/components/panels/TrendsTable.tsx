@@ -10,7 +10,7 @@ import { deltaColour } from "@/components/charts/ramp";
 import { VARIABLE_LABEL, fmtMonth, fmtP, fmtSlope } from "@/lib/format";
 import { P } from "@/lib/palette";
 import type { Place, TrendsFile, Variable } from "@/lib/types";
-import { Card, Chip, DeltaChip, ROW_CLASS, ROW_SELECTED, SortHeader, TABLE_SCROLL, cmp, nextSort, type SortState } from "./ui";
+import { Card, Chip, DeltaChip, PlainHeader, ROW_CLASS, ROW_SELECTED, SkeletonRows, SortHeader, Stamp, TABLE_SCROLL, cmp, nextSort, type SortState } from "./ui";
 
 type Key = "rank" | "name" | "country" | "slope" | "p" | "short";
 
@@ -97,15 +97,16 @@ export default function TrendsTable({ places, trends, variable, selected, filter
           <span><i className="mr-1 inline-block h-[2px] w-4 align-middle" style={{ background: P.s2 }} />rising</span>
           <span><i className="mr-1 inline-block h-[2px] w-4 align-middle" style={{ background: P.s1 }} />falling</span>
           <span>slope = Sen&apos;s slope over 10 years of monthly means, {unit || "unit/yr"} · grey = p ≥ 0.05</span>
-          <span>spark = 12-month rolling mean of 10 years of monthly values · Δ = 90-day slope, same unit</span>
+          <span>spark = 12-month rolling mean of 10 years of monthly values · 90d = Sen&apos;s slope over the last 90 days, same unit</span>
+          <Stamp valid={trends?.months.length ? `${trends.months[0]} → ${trends.months[trends.months.length - 1]}` : "–"} retrieved={trends?.meta.generated_at} kind="trend" />
         </span>
       }
     >
       <div className={TABLE_SCROLL}>
         <table className="w-full table-fixed border-collapse">
           <colgroup>
-            <col style={{ width: 28 }} /><col /><col style={{ width: 34 }} /><col style={{ width: 112 }} />
-            <col style={{ width: 52 }} /><col style={{ width: 72 }} /><col style={{ width: 62 }} />
+            <col style={{ width: 28 }} /><col /><col style={{ width: 30 }} /><col style={{ width: 104 }} />
+            <col style={{ width: 50 }} /><col style={{ width: 72 }} /><col style={{ width: 80 }} />
           </colgroup>
           <thead className="sticky top-0 z-[1] bg-surface">
             <tr className="h-6">
@@ -114,13 +115,14 @@ export default function TrendsTable({ places, trends, variable, selected, filter
               <SortHeader k="country" label="cc" sort={sort} onSort={onSort} />
               <SortHeader k="slope" label={`10y ${unit}`} sort={sort} onSort={onSort} align="right" title="Sen's slope, 10-year window" />
               <SortHeader k="p" label="p" sort={sort} onSort={onSort} align="right" title="Mann-Kendall p-value" />
-              <th className="pr-1 text-left text-[10px] font-normal uppercase tracking-wide text-muted">10 y mean</th>
-              <SortHeader k="short" label="Δ 90d" sort={sort} onSort={onSort} align="right" title="Sen's slope over the last 90 days, same unit" />
+              <PlainHeader label="10 y mean" title="12-month rolling mean of the monthly values" />
+              <SortHeader k="short" label={`90d ${unit}`} sort={sort} onSort={onSort} align="right" title="Sen's slope over the last 90 days, same unit" />
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={7} className="py-4 text-center text-[11px] text-muted">no trends yet</td></tr>
+            {!trends && <SkeletonRows n={20} cols={7} />}
+            {trends && rows.length === 0 && (
+              <tr><td colSpan={7} className="py-4 text-center text-[11px] text-muted">no places in this region</td></tr>
             )}
             {rows.map((r) => {
               const series = rolling12(trends?.series_long[r.i]?.[vi] ?? []);

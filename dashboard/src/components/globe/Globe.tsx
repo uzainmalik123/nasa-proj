@@ -221,6 +221,11 @@ export default function Globe(props: GlobeProps) {
     });
     s.map = map;
     s.ready = false;
+    // The basemap's city labels ask for sprite icons ("circle-11") the OpenFreeMap sprite lacks;
+    // answer with a transparent 1 px image so the console stays clean (the icon is never shown anyway).
+    map.setMissingStyleImageResolver((id) => {
+      if (!map.hasImage(id)) map.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) });
+    });
     map.on("zoom", () => {
       const z = quantZoom(map.getZoom());
       setZoom((prev) => (prev === z ? prev : z));

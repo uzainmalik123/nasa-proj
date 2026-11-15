@@ -1,0 +1,11 @@
+after '/': activeElement = INPUT:search place
+place panel open: 1
+after Esc: panel open = 0 · url = http://localhost:8761/
+
+layout shifts (no recent input): 4, CLS sum 0.0017
+{"t":2074,"v":0,"input":false,"src":["div.flex shrink-0 items-center gap-3 \"loading 2 of 9 files2026-11-15 08:52 UTC\" {\"x\":1600,\"y\":15,\"width\":304,\"height\":25,\"top\":15,\"right\":1904,\"bot
+{"t":9738,"v":0,"input":false,"src":["div.flex shrink-0 items-center gap-3 \"live · updated 4h ago2026-11-15 08:52 UT\" {\"x\":1599,\"y\":15,\"width\":305,\"height\":25,\"top\":15,\"right\":1904,\"bot
+{"t":26135,"v":0,"input":false,"src":["span.text-muted \"· ring when zoomed in\" {\"x\":669,\"y\":879,\"width\":107,\"height\":15,\"top\":879,\"right\":776,\"bottom\":894,\"left\":669}→{\"x\":672,\"y\
+{"t":26240,"v":0.0017,"input":false,"src":["div.pointer-events-none absolute bottom-3 left-3 rounded-xl bord \"wildfire · next 14 daysrisk assessment ·\" {\"x\":564,\"y\":793,\"width\":240,\"height\":
+
+console/page/network problems: 45
