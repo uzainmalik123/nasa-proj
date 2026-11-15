@@ -120,6 +120,6 @@ html, body {
    show them only where the bar has that room, so nothing overlaps on 1536–1819 px screens */
 .topbar-wide { display: none; }
 @media (min-width: 1820px) { .topbar-wide { display: inline; } }
-@media (max-width: 1439.98px) { .topbar-controls select { max-width: 98px !important; } .topbar-controls input { width: 86px !important; } .topbar-controls { gap: 6px; } }
+@media (max-width: 1439.98px) { .topbar-controls select { max-width: 92px !important; } .topbar-controls input { width: 84px !important; } .topbar-controls { gap: 4px; } }
 @media (max-width: 1279.98px) { .topbar-controls select { max-width: 92px !important; } .topbar-controls input { width: 80px !important; } }
 @media (max-width: 1199.98px) { .topbar-controls select { max-width: 84px !important; } }
