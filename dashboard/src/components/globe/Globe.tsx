@@ -1,7 +1,8 @@
 "use client";
 // Globe.tsx · DESIGN.md §4, contracts.md §5. MapLibre globe with places
-// coloured by the selected hazard (mode "next14") or by the selected trend
-// variable's 10-year slope (mode "now"), live FIRMS bins on top, optional
+// coloured by the selected hazard (current category in mode "now", forecast
+// probability in mode "next14") or, when `trendVar` is set, by that trend
+// variable's 10-year slope (M-MODE+URL), live FIRMS bins on top, optional
 // GIBS raster underneath (off until `gibsLayer` is set), continent filter
 // dims places elsewhere. Owns no React state: everything is props → map.
 import { useEffect, useMemo, useRef, useState } from "react";

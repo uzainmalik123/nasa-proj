@@ -3,7 +3,7 @@
 Runs last, even after an earlier stage raised, so every run leaves a
 ``run.json`` (contracts §3) that says what passed:
 
-  G1 time       incremental < 15 min, cold run (no POWER cache at start) < 60 min
+  G1 time       incremental < 20 min, cold run (no POWER cache at start) < 60 min
   G2 coverage   ≥ 98 % of places with POWER through 4 days ago, a forecast on
                 every day the hazards read (today .. today + 14) and a FIRMS count
   G3 freshness  FIRMS ≤ 6 h, POWER ≤ 4 days, forecast ≤ 12 h (freshness.json)

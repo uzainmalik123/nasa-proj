@@ -70,6 +70,7 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 - **Seen:** `timings.ingest` 553.7 s on every incremental run; the science stages take ~75 s.
 - **Checked:** `POWER_PACE_S = 1.0` with 2 workers is a global one-request-per-second pace, 554 places → 554 s regardless of workers.
 - **Fix sketch (S1, small, needs a quota check):** POWER's documented limit is per-minute; test `POWER_PACE_S=0.5` on a manual run (277 s). Required before tier 2 (1,500 places would be 25 min at the current pace, over G1).
+- **15 Nov:** with the Pakistan tier (666 places) a tier-due incremental run is ~800 s, ~100 s under the 900 s budget. `G1_INCREMENTAL_MAX_S` raised to 20 min for headroom; the pace stays at 1 s because the POWER team states no fixed limit but throttles for fair use, and the runner IP is shared (the Open-Meteo ban, KI-8). The 0.5 s experiment above is still the real fix for tier 2.
 
 ### KI-12 · The honesty ledger only ever shows green runs
 - **Seen:** `honesty.json` `runs[]` lists ok=true runs only.

@@ -1,15 +1,20 @@
 "use client";
 // Ranked hazards table (PRD H7, DESIGN.md §5). One row per place for the chosen
-// hazard: rank, name, country, headline value as mono + ramp bar, sparkline of
-// the last 14 days of hindcast risk, Δ chip vs 7 days ago, category. Sortable;
+// hazard: rank, name, country, headline as mono + ramp bar, sparkline of the
+// last 14 days of hindcast risk, Δ chip vs 7 days ago, category. Sortable;
 // click selects + flies.
+//
+// M-MODE+URL (PRD M5): the headline column follows the mode. "next14" puts the
+// forecast probability (index / days for drought / heat) in the headline slot
+// and the category in the small column; "now" swaps them, so the big column is
+// the category each place is in today, ranked category-first.
 import { useMemo, useState } from "react";
 import Sparkline from "@/components/charts/Sparkline";
 import RampBar from "@/components/charts/RampBar";
 import { CATEGORY_V, WILDFIRE_THRESHOLDS_PCT, deltaColour, riskColour } from "@/components/charts/ramp";
 import { RISK_STOPS } from "@/lib/palette";
 import { CATEGORY_ORDER, CONFIDENCE_ORDER, HAZARD_LABEL, fmtCount, fmtDay, pct, signed } from "@/lib/format";
-import type { Category, Confidence, Hazard, Place, RiskFile, RiskNow } from "@/lib/types";
+import type { Category, Confidence, Hazard, Mode, Place, RiskFile, RiskNow } from "@/lib/types";
 import { Card, CategoryChip, DeltaChip, ROW_CLASS, ROW_SELECTED, SortHeader, TABLE_SCROLL, cmp, nextSort, type SortState } from "./ui";
 
 type Key = "rank" | "name" | "country" | "value" | "delta" | "category" | "exposure";
@@ -70,6 +75,8 @@ export interface HazardsTableProps {
   places: Place[];
   risk: RiskFile | null;
   hazard: Hazard;
+  /** "now" = category headline, "next14" = probability headline (M-MODE+URL). */
+  mode: Mode;
   selected: number | null;
   filter: Set<number> | null;
   onPick: (i: number) => void;
@@ -77,9 +84,10 @@ export interface HazardsTableProps {
 
 const SPARK_DAYS = 14;
 
-export default function HazardsTable({ places, risk, hazard, selected, filter, onPick }: HazardsTableProps) {
+export default function HazardsTable({ places, risk, hazard, mode, selected, filter, onPick }: HazardsTableProps) {
   const [sort, setSort] = useState<SortState<Key>>({ key: "value", dir: "desc" });
   const continuous = hazard === "wildfire" || hazard === "rain";
+  const byCategory = mode === "now";
 
   const rows = useMemo<Row[]>(() => {
     if (!risk) return [];
@@ -100,20 +108,25 @@ export default function HazardsTable({ places, risk, hazard, selected, filter, o
         exposure: r[hazard].exposure,
       });
     }
-    const ranked = [...out].sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity));
-    // drought: more negative = worse, so rank ascending by index
-    if (hazard === "drought") ranked.sort((a, b) => (a.value ?? Infinity) - (b.value ?? Infinity));
+    // worst first in native units; drought: more negative = worse
+    const worst = (r: Row): number => r.value == null ? -Infinity : hazard === "drought" ? -r.value : r.value;
+    const ranked = [...out].sort((a, b) => worst(b) - worst(a));
+    const pos = new Map(ranked.map((r, k) => [r.i, k]));
+    // "now": category first, then the headline inside the category (a tie-break < 1)
+    const catKey = (r: Row): number => CATEGORY_ORDER.indexOf(r.category) + (1 - (pos.get(r.i) ?? 0) / Math.max(1, ranked.length)) * 0.99;
+    if (byCategory) ranked.sort((a, b) => catKey(b) - catKey(a));
     const rank = new Map(ranked.map((r, k) => [r.i, k + 1]));
+    // `value` and `category` are the big and the small column, whichever quantity sits in them this mode
     const key = (r: Row): number | string | null =>
       sort.key === "rank" ? rank.get(r.i) ?? null
       : sort.key === "name" ? r.place.name
       : sort.key === "country" ? r.place.country
-      : sort.key === "value" ? (hazard === "drought" && r.value != null ? -r.value : r.value)
+      : sort.key === "value" ? (byCategory ? catKey(r) : r.value == null ? null : worst(r))
       : sort.key === "delta" ? (hazard === "drought" && r.delta != null ? -r.delta : r.delta)
-      : sort.key === "category" ? CATEGORY_ORDER.indexOf(r.category)
+      : sort.key === "category" ? (byCategory ? (r.value == null ? null : worst(r)) : CATEGORY_ORDER.indexOf(r.category))
       : r.exposure;
     return out.sort((a, b) => cmp(key(a), key(b), sort.dir) || a.i - b.i).map((r) => ({ ...r, rank: rank.get(r.i) }));
-  }, [risk, hazard, places, filter, sort]);
+  }, [risk, hazard, byCategory, places, filter, sort]);
 
   const days = risk?.history_days ?? [];
   const sparkDays = days.slice(-SPARK_DAYS);
@@ -122,9 +135,16 @@ export default function HazardsTable({ places, risk, hazard, selected, filter, o
 
   return (
     <Card
-      title={<>Hazards · who faces the highest {HAZARD_LABEL[hazard]} risk in the next 14 days?</>}
+      title={byCategory
+        ? <>Hazards · which places are in the highest {HAZARD_LABEL[hazard]} category today?</>
+        : <>Hazards · who faces the highest {HAZARD_LABEL[hazard]} risk in the next 14 days?</>}
       caption={
         <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          <span>
+            {byCategory
+              ? <>mode <span className="text-ink-2">now</span>: today&apos;s category, ranked category-first · next 14 days ranks by the {valueHeader === "p 14d" ? "probability" : valueHeader}</>
+              : <>mode <span className="text-ink-2">next 14 days</span>: ranked by {valueHeader === "p 14d" ? "the calibrated probability" : `the forecast ${valueHeader}`} · now ranks by today&apos;s category</>}
+          </span>
           <span>
             <i className="mr-1 inline-block h-[10px] w-4 rounded-sm align-middle" style={{ background: `linear-gradient(to right, ${riskColour(0.05)}, ${riskColour(1)})` }} />
             risk ramp {RAMP_LABEL} = 50 / 80 / 95 / 99th percentile of today&apos;s wildfire p
@@ -145,10 +165,14 @@ export default function HazardsTable({ places, risk, hazard, selected, filter, o
               <SortHeader k="rank" label="#" sort={sort} onSort={onSort} />
               <SortHeader k="name" label="place" sort={sort} onSort={onSort} />
               <SortHeader k="country" label="cc" sort={sort} onSort={onSort} />
-              <SortHeader k="value" label={valueHeader} sort={sort} onSort={onSort} align="right" title={UNIT_NOTE[hazard]} />
+              {byCategory
+                ? <SortHeader k="value" label="category" sort={sort} onSort={onSort} title="low / elevated / high / extreme, from the risk assessment issued today" />
+                : <SortHeader k="value" label={valueHeader} sort={sort} onSort={onSort} align="right" title={UNIT_NOTE[hazard]} />}
               <th className="pr-1 text-left text-[10px] font-normal uppercase tracking-wide text-muted">hindcast</th>
               <SortHeader k="delta" label="Δ 7d" sort={sort} onSort={onSort} align="right" />
-              <SortHeader k="category" label="cat" sort={sort} onSort={onSort} />
+              {byCategory
+                ? <SortHeader k="category" label={valueHeader} sort={sort} onSort={onSort} align="right" title={UNIT_NOTE[hazard]} />
+                : <SortHeader k="category" label="cat" sort={sort} onSort={onSort} />}
               <SortHeader k="exposure" label="pop" sort={sort} onSort={onSort} align="right" title="population within the watch radius" />
             </tr>
           </thead>
@@ -173,12 +197,20 @@ export default function HazardsTable({ places, risk, hazard, selected, filter, o
                   <td className="pr-1 font-mono text-muted">{r.rank}</td>
                   <td className="truncate pr-1 text-ink">{r.place.name}</td>
                   <td className="pr-1 text-muted">{r.place.country}</td>
-                  <td className="pr-1 text-right">
-                    <span className="inline-flex items-center justify-end gap-1.5">
-                      <span className="font-mono text-ink">{fmtHeadline(hazard, r.value)}</span>
-                      <RampBar v={r.v} />
-                    </span>
-                  </td>
+                  {byCategory ? (
+                    <td className="pr-1">
+                      <CategoryChip category={r.category} title={`confidence ${r.confidence}`}>
+                        <span className="opacity-60">{"·".repeat(CONFIDENCE_ORDER.indexOf(r.confidence) + 1)}</span>
+                      </CategoryChip>
+                    </td>
+                  ) : (
+                    <td className="pr-1 text-right">
+                      <span className="inline-flex items-center justify-end gap-1.5">
+                        <span className="font-mono text-ink">{fmtHeadline(hazard, r.value)}</span>
+                        <RampBar v={r.v} />
+                      </span>
+                    </td>
+                  )}
                   <td className="pr-1">
                     <Sparkline
                       values={hist}
@@ -197,11 +229,15 @@ export default function HazardsTable({ places, risk, hazard, selected, filter, o
                       title={`${fmtHeadline(hazard, r.value)} now vs ${days.length ? fmtDay(days[days.length - 7] ?? "") : "7 days ago"}`}
                     />
                   </td>
-                  <td className="pr-1">
-                    <CategoryChip category={r.category} title={`confidence ${r.confidence}`}>
-                      <span className="opacity-60">{"·".repeat(CONFIDENCE_ORDER.indexOf(r.confidence) + 1)}</span>
-                    </CategoryChip>
-                  </td>
+                  {byCategory ? (
+                    <td className="pr-1 text-right font-mono text-ink-2" title={UNIT_NOTE[hazard]}>{fmtHeadline(hazard, r.value)}</td>
+                  ) : (
+                    <td className="pr-1">
+                      <CategoryChip category={r.category} title={`confidence ${r.confidence}`}>
+                        <span className="opacity-60">{"·".repeat(CONFIDENCE_ORDER.indexOf(r.confidence) + 1)}</span>
+                      </CategoryChip>
+                    </td>
+                  )}
                   <td className="text-right font-mono text-ink-2">{fmtCount(r.exposure)}</td>
                 </tr>
               );

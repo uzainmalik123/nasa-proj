@@ -210,7 +210,7 @@ A run is one pipeline execution. It grades itself and writes `run.json`; any fai
 
 | Gate | Pass condition |
 |---|---|
-| G1 Time | incremental < 15 min; first cold run < 60 min |
+| G1 Time | incremental < 20 min (15 until 15 Nov; 666 places at POWER's 1 req/s pace is ~13 min); first cold run < 60 min |
 | G2 Coverage | ≥ 98% of places have POWER through 4 days ago, a full forecast, and a FIRMS count |
 | G3 Freshness | FIRMS ≤ 6 h, POWER ≤ 4 days, forecast ≤ 12 h |
 | G4 Sanity | FIRMS world/1 > 1,000 rows; risks in [0, 1]; no NaN; risk std across places > 0.01; trend p-values in [0, 1] |

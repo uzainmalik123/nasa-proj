@@ -10,7 +10,7 @@ import TrendChart, { TrendLabelText, type TrendWindowData } from "@/components/c
 import { HAZARD_COLOUR } from "@/components/charts/ramp";
 import { HAZARD_LABEL, VARIABLE_LABEL, fmtCount, fmtDay, fmtUtc, signed } from "@/lib/format";
 import { P } from "@/lib/palette";
-import { HAZARDS, VARIABLES, type Data, type Hazard, type SeriesFile, type Variable } from "@/lib/types";
+import { HAZARDS, VARIABLES, type Data, type Hazard, type Mode, type SeriesFile, type Variable } from "@/lib/types";
 import { zScore } from "@/components/charts/chart";
 import HazardCard from "./HazardCard";
 import { Card } from "./ui";
@@ -45,12 +45,14 @@ export interface PlacePanelProps {
   selected: number | null;
   trendVar: Variable;
   hazard: Hazard;
+  /** "now" = category headlines on the hazard cards, "next14" = probability (M-MODE+URL) */
+  mode?: Mode;
   onTrendVar: (v: Variable) => void;
   onHazard: (h: Hazard) => void;
   onClear: () => void;
 }
 
-export default function PlacePanel({ data, selected, trendVar, hazard, onTrendVar, onHazard, onClear }: PlacePanelProps) {
+export default function PlacePanel({ data, selected, trendVar, hazard, mode = "next14", onTrendVar, onHazard, onClear }: PlacePanelProps) {
   if (!data || selected == null || !data.places.places[selected]) {
     return (
       <Card title="Selected place" caption="Observation (POWER, FIRMS) · trend (Mann-Kendall) · risk assessment (hazard modules) · forecast (Open-Meteo) are shown as four different things.">
@@ -198,12 +200,12 @@ export default function PlacePanel({ data, selected, trendVar, hazard, onTrendVa
       {/* ── hazards ───────────────────────────────────────────────────── */}
       <SectionHead
         className="mt-3"
-        left={<>What does it mean for the next 14 days?</>}
+        left={mode === "now" ? <>Which hazard category is {p.name} in today?</> : <>What does it mean for the next 14 days?</>}
         right={<span className="text-muted">risk assessment · valid {fmtDay(risk.valid_from)} → {fmtDay(risk.valid_to)}</span>}
       />
       <div className="grid grid-cols-4 gap-1.5">
         {HAZARDS.map((h) => (
-          <HazardCard key={h} hazard={h} now={now} validFrom={risk.valid_from} validTo={risk.valid_to} selected={h === hazard} onPick={() => onHazard(h)} />
+          <HazardCard key={h} hazard={h} now={now} mode={mode} validFrom={risk.valid_from} validTo={risk.valid_to} selected={h === hazard} onPick={() => onHazard(h)} />
         ))}
       </div>
       <div className="mt-1 text-[10px] text-muted">

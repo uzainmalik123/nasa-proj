@@ -4,10 +4,15 @@
 // window) and a coloured left border in the hazard's colour. The four numbers
 // are never collapsed into one. Clicking a card picks the hazard whose drivers
 // and sentence the panel shows.
-import { HAZARD_COLOUR } from "@/components/charts/ramp";
+//
+// M-MODE+URL (PRD M5): the headline follows the mode. "next14" = the forecast
+// probability (index / days for drought / heat) with the category as a chip;
+// "now" = the category the place is in today, with the number demoted to the
+// sub line.
+import { CATEGORY_V, HAZARD_COLOUR, riskColour } from "@/components/charts/ramp";
 import { CONFIDENCE_ORDER, HAZARD_LABEL, fmtCount, fmtDay, pct, signed } from "@/lib/format";
 import { P } from "@/lib/palette";
-import type { Hazard, RiskNow } from "@/lib/types";
+import type { Hazard, Mode, RiskNow } from "@/lib/types";
 import { CategoryChip } from "./ui";
 
 /** Headline per hazard: probability for the model hazards, category-bearing value for the threshold ones. */
@@ -38,13 +43,15 @@ export const SEVERITY_NOTE: Record<Hazard, string> = {
   rain: "mm above the place's own 95th-percentile week",
 };
 
-export default function HazardCard({ hazard, now, validFrom, validTo, selected, onPick }: {
-  hazard: Hazard; now: RiskNow | null; validFrom: string; validTo: string; selected: boolean; onPick: () => void;
+export default function HazardCard({ hazard, now, mode = "next14", validFrom, validTo, selected, onPick }: {
+  hazard: Hazard; now: RiskNow | null; mode?: Mode; validFrom: string; validTo: string; selected: boolean; onPick: () => void;
 }) {
   const colour = HAZARD_COLOUR[hazard];
   const r = now?.[hazard];
   const head = now ? hazardHeadline(hazard, now) : { big: "–", sub: "" };
   const conf = r?.confidence;
+  const byCategory = mode === "now";
+  const catColour = r ? (r.category === "low" ? P.muted : riskColour(CATEGORY_V[r.category])) : P.muted;
   return (
     <button
       type="button"
@@ -57,11 +64,30 @@ export default function HazardCard({ hazard, now, validFrom, validTo, selected, 
       style={{ borderLeft: `3px solid ${colour}` }}
     >
       <div className="truncate text-[10px] uppercase tracking-wide text-muted">{HAZARD_LABEL[hazard]}</div>
-      <div className="font-mono text-[22px] font-semibold leading-tight text-ink">{head.big}</div>
-      <div className="mb-1 flex items-center justify-between gap-1 text-[9.5px] text-muted">
-        <span className="truncate">{head.sub}</span>
-        {r && <CategoryChip category={r.category} />}
-      </div>
+      {byCategory ? (
+        <>
+          {/* category word at 19 px so "elevated" fits a 4-up card; the dot carries the ramp colour (chips keep text in ink, DESIGN §2) */}
+          <div className="flex items-center gap-1.5 font-mono text-[19px] font-semibold leading-[28px] text-ink" data-category={r?.category}>
+            <span
+              className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ background: catColour, boxShadow: r?.category === "extreme" ? `0 0 6px ${catColour}` : undefined }}
+            />
+            <span className="truncate">{r?.category ?? "–"}</span>
+          </div>
+          <div className="mb-1 flex items-center justify-between gap-1 text-[9.5px] text-muted">
+            <span className="truncate">category today</span>
+            <span className="font-mono text-ink-2" title={head.sub}>{head.big}</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="font-mono text-[22px] font-semibold leading-tight text-ink">{head.big}</div>
+          <div className="mb-1 flex items-center justify-between gap-1 text-[9.5px] text-muted">
+            <span className="truncate">{head.sub}</span>
+            {r && <CategoryChip category={r.category} />}
+          </div>
+        </>
+      )}
       <Row k="severity" v={fmtSeverity(hazard, r?.severity)} />
       <Row k="exposure" v={r ? `${fmtCount(r.exposure)} pop` : "–"} />
       <Row
