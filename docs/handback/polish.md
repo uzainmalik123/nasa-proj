@@ -30,6 +30,10 @@ Keyboard: `/` focuses search and Esc clears the selection. Both already worked o
   - The 45 `requestfailed` lines left out of the file are all `tiles.openfreemap.org/... net::ERR_ABORTED`. MapLibre cancels those tile requests itself when the globe zooms or flies. They are network events, not console messages, and live shows the same aborts.
 - `npm run lint` clean · `npm run build` static export OK · `npm test` 0 fail. Pipeline not touched, so ruff was not needed.
 
+### Live, after deploy run 43696757845 (green, main 52d39f0, 08:57 UTC)
+- `console-after-live.txt`, against https://globalalert.earth: **0 console errors or warnings, 0 page errors, 0 HTTP ≥ 400**. Load CLS is 0, plus 0.0017 after the user's fly-to. `/` focuses search and Esc closes the panel. The 45 `requestfailed` lines left out are all OpenFreeMap tile aborts.
+- `live-after-00-t0300ms.png`: the first paint is the frame. `live-after-02-loaded-risk.png`: the loaded view.
+
 ## Calls I made
 - I kept the loading state static (no shimmer), because DESIGN §7 says nothing animates on load.
 - The Retry button reloads the page. That is simpler than re-running the loader in place, and the IndexedDB cache makes the reload cheap.
