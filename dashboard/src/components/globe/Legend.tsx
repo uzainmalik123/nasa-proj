@@ -31,8 +31,8 @@ function pctLabel(v: number): string {
 const trendGradient = `linear-gradient(to right, ${P.s1} 0%, ${P.muted} 50%, ${P.s2} 100%)`;
 
 export default function Legend({
-  colouring, fires = null, gibs = null, zoom = 0,
-}: { colouring: Colouring; fires?: FiresFile | null; gibs?: GibsValid | null; zoom?: number }) {
+  colouring, fires = null, firesOn = true, gibs = null, zoom = 0,
+}: { colouring: Colouring; fires?: FiresFile | null; firesOn?: boolean; gibs?: GibsValid | null; zoom?: number }) {
   return (
     <div
       className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-[10px] text-muted backdrop-blur"
@@ -40,7 +40,11 @@ export default function Legend({
     >
       {colouring.kind === "risk" ? <RiskLegend c={colouring} ring={lowIsRing(zoom)} /> : <TrendLegend c={colouring} />}
       {gibs && <GibsRow g={gibs} />}
-      <FireRow fires={fires} zoom={zoom} />
+      {/* F1 band B: fires toggled off → the row stays, dimmed, and says so */}
+      <div className={firesOn ? undefined : "opacity-40"} data-fires-on={firesOn ? "true" : "false"}>
+        <FireRow fires={fires} zoom={zoom} />
+        {!firesOn && <div className="font-semibold uppercase tracking-[0.08em] text-ink-2">hidden</div>}
+      </div>
     </div>
   );
 }

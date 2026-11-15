@@ -243,7 +243,7 @@ This section is the tracker. The work is split across sessions; each session tak
 | L4 | Dock gauges (§5.4 gauges table): ring component, six tiles, region filter, tooltips | S4 | L1 | open |
 | L5 | Dock timeline (§5.4 timeline): track, play, `day` in state and URL, globe recolour from `history` / `fwi_forecast`, GIBS date follows the day, `date=` folded into `day=` | S3 | L3, L4 | open |
 | L6 | Colour usage cleanup (§6 bullets): ramp-coloured bars, zero-delta chips muted, sparklines without fill, green only on live/gates/hit-rate, one glass recipe, captions to the Sources tab (§7) | S4 | L1 | open |
-| F1 | Fire heatmap at world zoom with zoom crossfade and legend swap (§6.1 band 1) | S3 | – (ship first) | open |
+| F1 | Fire heatmap at world zoom with zoom crossfade and legend swap (§6.1 band 1) | S3 | – (ship first) | done (PR) |
 | F2 | `fires_points.json` from the pipeline, lazy load above zoom 4, real-position dots (§6.1 band 2) | S1 + S3 | F1 | open, only if time allows |
 | L7 | DESIGN.md §3 and §4 rewritten to match; KNOWN_ISSUES entries KI-14 / KI-15 re-checked against the new chrome; final walk proof | S4 | all above | open |
 | L8 | Mobile layout "M4" (§5.5): breakpoints, glass top bar + chip row, timeline pill, city sheet with stage resize and centred fly-to, sections drawer with five tabs, touch targets; proof screenshots at 390 × 844 for all three states | S3 + S4 | L1, L3, L5, F1 | open |
