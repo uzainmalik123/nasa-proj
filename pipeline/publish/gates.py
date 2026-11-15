@@ -4,8 +4,8 @@ Runs last, even after an earlier stage raised, so every run leaves a
 ``run.json`` (contracts §3) that says what passed:
 
   G1 time       incremental < 15 min, cold run (no POWER cache at start) < 60 min
-  G2 coverage   ≥ 98 % of places with POWER through 4 days ago, a full 16-day
-                forecast and a FIRMS count
+  G2 coverage   ≥ 98 % of places with POWER through 4 days ago, a forecast on
+                every day the hazards read (today .. today + 14) and a FIRMS count
   G3 freshness  FIRMS ≤ 6 h, POWER ≤ 4 days, forecast ≤ 12 h (freshness.json)
   G4 sanity     FIRMS live rows > 1,000, risks in [0, 1], no NaN, wildfire p std
                 across places > 0.01, trend p in [0, 1]
@@ -121,7 +121,11 @@ def g2_coverage(places: pd.DataFrame | None, data_dir: Path, today: date, run_id
             continue
         if len(d) and pd.Timestamp(d.max()).date() >= power_cut:
             power_ok.add(pid)
-    # a full forecast: a value on all FORECAST_DAYS days from today, from this run's file
+    # a full forecast: a value on every day the hazards read, today through
+    # today + HORIZON_DAYS, from this run's file. The FORECAST_DAYS file is one
+    # day longer; that tail (today + 15) is null from every Open-Meteo model
+    # until the day's model runs land (~06 UTC), only feeds fwi_forecast,
+    # which is nullable, and must not fail the 00Z / 03Z runs.
     fc_ok: set[str] = set()
     fdir = cache / "forecast"
     fpath = fdir / f"{run_id}.parquet"
@@ -130,9 +134,11 @@ def g2_coverage(places: pd.DataFrame | None, data_dir: Path, today: date, run_id
         fpath = files[-1] if files else fpath
     if fpath.exists():
         fc = pd.read_parquet(fpath, columns=["place_id", "date", "tmax"])
-        fc = fc[(pd.to_datetime(fc["date"]).dt.date >= today) & fc["tmax"].notna()]
-        cnt = fc.groupby("place_id").size()
-        fc_ok = set(cnt[cnt >= config.FORECAST_DAYS].index)
+        d = pd.to_datetime(fc["date"]).dt.date
+        last = today + timedelta(days=config.HORIZON_DAYS)
+        fc = fc[(d >= today) & (d <= last) & fc["tmax"].notna()]
+        cnt = fc.drop_duplicates(["place_id", "date"]).groupby("place_id").size()
+        fc_ok = set(cnt[cnt >= config.HORIZON_DAYS + 1].index)
     # a FIRMS count on the newest counted date
     firms_ok: set[str] = set()
     cpath = cache / "firms_counts.parquet"

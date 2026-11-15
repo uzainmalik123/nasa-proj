@@ -156,3 +156,38 @@ def test_nan_in_risk(world, monkeypatch):
     monkeypatch.setattr(gates, "_now", lambda: datetime(2026, 11, 14, 12, 10, tzinfo=UTC))
     ctx["risk"]["now"][1]["heat"]["severity"] = float(np.nan)
     assert gates.run(ctx)["failed_gate"] == "G4_sanity"
+
+
+def _null_forecast_day(d, offset, places=("a-aa", "b-bb", "c-cc")):
+    """Blank tmax on today+offset for the given places in this run's forecast file."""
+    path = d / "cache" / "forecast" / f"{RUN}.parquet"
+    fc = pd.read_parquet(path)
+    target = datetime(2026, 11, 14, tzinfo=UTC).date() + timedelta(days=offset)
+    hit = (pd.to_datetime(fc["date"]).dt.date == target) & fc["place_id"].isin(places)
+    assert hit.sum() == len(places)
+    fc.loc[hit, "tmax"] = np.nan
+    fc.to_parquet(path, index=False)
+
+
+def test_g2_tolerates_null_forecast_tail(world, monkeypatch):
+    """Open-Meteo has no day 16 (today+15) from any model early in the UTC day; the hazards
+    only read today and the next HORIZON_DAYS, so that tail must not fail the run."""
+    d, ctx = world
+    monkeypatch.setattr(gates, "_now", lambda: datetime(2026, 11, 14, 12, 10, tzinfo=UTC))
+    _null_forecast_day(d, config.FORECAST_DAYS - 1)
+    body = gates.run(ctx)
+    assert body["gates"]["G2_coverage"]["pass"] is True, body["gates"]["G2_coverage"]
+    assert body["ok"] is True and body["failed_gate"] is None
+
+
+@pytest.mark.parametrize("offset", [0, 7, config.HORIZON_DAYS])
+def test_g2_fails_on_null_day_inside_horizon(world, monkeypatch, offset):
+    """A hole on today or any of the next HORIZON_DAYS days is a real gap, even when the
+    place still has 15 of 16 forecast days."""
+    d, ctx = world
+    monkeypatch.setattr(gates, "_now", lambda: datetime(2026, 11, 14, 12, 10, tzinfo=UTC))
+    _null_forecast_day(d, offset, places=("b-bb",))
+    body = gates.run(ctx)
+    g = body["gates"]["G2_coverage"]
+    assert g["pass"] is False and "forecast 2" in g["detail"], g
+    assert body["failed_gate"] == "G2_coverage"

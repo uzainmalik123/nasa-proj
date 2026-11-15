@@ -119,6 +119,7 @@ Owners follow `contracts.md` §1: S1 pipeline/ingest + gates + workflows · S2 s
 ## Fixed
 - 14 Nov · INTEGRATE d1: KI-7 step 1a (parallel fetch + progress pill), see above.
 - 14 Nov · Open-Meteo day 16 null over Europe (21 places): filled from `gfs_seamless` in the ingest; G2 requires 16 days.
+- 15 Nov · Open-Meteo day 16 null everywhere before ~06 UTC (run 43660446069, 00:53 UTC, G2 "forecast 0" for 554 places; `gfs_seamless` has no day 16 then either): G2 now requires today .. today + 14, the days the hazards read; day 16 only feeds the nullable `fwi_forecast`.
 - 14 Nov · Open-Meteo per-IP quota ban: incremental `past_days=2`, cache reuse, fail-fast with cache fallback.
 - 14 Nov · Reused forecast cache not filled: reuse path runs the fill too.
 - 14 Nov · Per-place Open-Meteo fetch took 903 s (over G1): batched 25 places per request.
