@@ -53,7 +53,10 @@ html, body {
    pushed it off small screens; at lg it keeps the original bottom-centre placement */
 .gibs-bar { left: 8px; right: 8px; bottom: 76px; }
 @media (min-width: 1024px) {
-  .gibs-bar { left: 50%; right: auto; bottom: 12px; transform: translateX(-50%); width: min(480px, 56%); }
+  /* desktop: the layer is picked in the top bar; the bar (date slider) shows only while a layer is on,
+     bottom-right beside the zoom buttons so it never covers the legend bottom-left */
+  .gibs-bar { left: auto; right: 64px; bottom: 12px; transform: none; width: min(460px, calc(100% - 340px)); }
+  .gibs-bar[data-on="0"] { display: none; }
 }
 
 /* globe legend (Legend.tsx, bottom-3 left-3): below lg lift it above the imagery bar and the
@@ -71,3 +74,16 @@ html, body {
 @media (prefers-reduced-motion: reduce) { .tab-pane { animation: none; } }
 .tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 ::selection { background: rgba(234, 88, 12, 0.35); color: var(--ink); }
+
+/* map controls (MapControls.tsx, bottom-12 right-3): below lg lift them to the legend's
+   row on the right so they clear the imagery bar and the Globe / Panels switch */
+@media (max-width: 1023.98px) {
+  section .absolute.bottom-12.right-3 { bottom: 142px; }
+}
+
+/* top bar: keep the controls on one line; the search box narrows instead of wrapping */
+.topbar-controls input { width: 104px !important; }
+.topbar-controls label { white-space: nowrap; }
+.topbar-controls button { white-space: nowrap; }
+.topbar-controls select { max-width: 112px !important; }
+@media (min-width: 1536px) { .topbar-controls select { max-width: 150px !important; } .topbar-controls input { width: 150px !important; } }
