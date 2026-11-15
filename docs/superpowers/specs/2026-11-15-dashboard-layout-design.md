@@ -33,8 +33,8 @@ Audience is unchanged from the PRD: a judge with four minutes, then disaster man
 ## 3. Constraints
 
 - Stack: Next 16, React 19, Tailwind 4, MapLibre GL (globe projection), hand-built d3 SVG charts. No charting library (DESIGN.md §5).
-- App state stays in `Dashboard.tsx` (contracts.md §5): mode, hazard, trendVar, selected, continent, flyTo, gibsLayer, gibsDate, and now `tab` and `day`.
-- URL round-trips state (`?mode&hazard&var&continent&selected&gibs&date`); the two new fields join it: `?tab=` and `?day=`.
+- App state stays in `Dashboard.tsx` (contracts.md §5): mode, hazard, trendVar, selected, continent, flyTo, gibsLayer, gibsDate, and now `tab`, `day`, `fires` and `places`.
+- URL round-trips state (`?mode&hazard&var&continent&selected&gibs&date`); the new fields join it: `?tab=`, `?day=`, `fires=0`, `places=0`.
 - The globe container must stay `position:absolute; inset:0` inline (MapLibre overrides classes).
 - `docs/DESIGN.md` §3 (layout) and §4's slider sentence are superseded by this document and should be rewritten to match once built. §2, §5, §6, §8 stand.
 
@@ -133,6 +133,13 @@ The globe fills the stage. `Globe.tsx` is unchanged except: the GIBS chip row an
 - Empty state: none. When nothing is selected there is no panel, and the column's Risk tab is the obvious next click. The old "click a row, a globe point or an alert to see…" prompt moves to the Sources tab's header line **(call)**.
 - Below 1280 px of viewport width the panel takes the full stage height and the dock hides behind it until it closes **(call)**; under 768 px the mobile sheet (§5.5) replaces it.
 
+**Stage controls** (bottom-right, stacked above the dock, 14 px inset) **(call on placement)**: one glass pill holding, top to bottom, zoom in `+`, zoom out `−`, reset view `⌂` (back to the world view at zoom 1.6), then a divider, then the layer toggles. Buttons are real `<button>`s, 32 px square, with `aria-label`s, styled with DESIGN.md tokens, not MapLibre's white default CSS. Keyboard: the canvas container gets `tabindex="0"`, so `+` / `−` / arrows work after Tab (closes KI-15).
+
+- **Fires toggle** (closes KI-14): a `flame` icon button that shows or hides the whole fire layer group (heatmap, glow, dots, and the points source once F2 exists). On = icon in `s2` orange with a 20 % tint; off = `muted` with a diagonal strike. State `fires: boolean` in `Dashboard.tsx`, default on, in the URL as `fires=0` only when off. The legend's fire row dims to 40 % and reads "active fires · hidden" while off, and clicking that row also toggles, so the legend and the button stay one control.
+- **Places toggle** **(call, the other half of KI-14)**: a `map-pin` button that hides the risk points the same way, so a judge can look at fires alone. Hiding places does not clear the selection; the selected ring stays visible.
+- Imagery stays in the top bar's select (§5.1); it is a choice of layer, not on/off.
+- On mobile (§5.5) the zoom buttons are omitted (pinch), the reset view and the two toggles join the chip row under the top bar as icon chips.
+
 **Hover tooltip** on points: unchanged.
 
 ### 5.4 Dock (bottom, glass, 14 px inset left/right/bottom)
@@ -182,7 +189,7 @@ state 1 · idle              state 2 · city tapped          state 3 · ≡ tapp
                             └──────────────┘
 ```
 
-- **State 1.** Top bar as a glass pill: ≡ (drawer), orange dot, short title "Trend Detective", live dot, ⌕ (search). Under it a horizontally scrolling chip row with the same controls as the desktop top bar (mode, hazard, trend, region, imagery). The globe fills the rest. The bottom carries only the timeline as a one-line glass pill **(call: kept because the user asked earlier for the slider to stay visible)**. No gauges on mobile; their numbers are in the Sources tab and the Risk tab header.
+- **State 1.** Top bar as a glass pill: ≡ (drawer), orange dot, short title "Trend Detective", live dot, ⌕ (search). Under it a horizontally scrolling chip row with the same controls as the desktop top bar (mode, hazard, trend, region, imagery) followed by the reset-view, fires and places icon chips from §5.3's stage controls. The globe fills the rest. The bottom carries only the timeline as a one-line glass pill **(call: kept because the user asked earlier for the slider to stay visible)**. No gauges on mobile; their numbers are in the Sources tab and the Risk tab header.
 - **State 2.** Tapping a globe point, a search result or a drawer row: the stage shrinks to the top ~46 % of the screen, the globe flies so the city sits at the centre of the visible half, and a sheet rises to ~54 %. Sheet contents top to bottom: grab handle; place name, country, population, coordinates, with the active hazard's headline (17 px mono) and category chip at the right and ✕; the one-line driver sentence; four hazard cards in a row (hazard-coloured left border, 12 px mono value); the fire-weather forecast curve; the SHAP driver bars; the timeline docked into the sheet's bottom edge. Dragging the sheet up reveals the rest of today's `PlacePanel` (trend chart with variable chips, the three anomaly series, the sentence). ✕ or swipe-down returns to state 1 and clears the selection; the globe animates back to full height.
 - **State 3.** ≡ opens a drawer from the left at 74 % width over a 45 % scrim. It is the desktop column re-flowed: the tab strip (icon + label) with **five** tabs, Risk, Trends, Alerts, Regions, Sources; no Place tab, the same five as desktop; the sheet is the place view. Content is the same components as desktop in their column layout; the hazards table hides its sparkline and population columns under 400 px wide **(call)**, which is the only place the "whole data visible" rule bends, and those two values are in the sheet. The source-status strip is pinned at the drawer's bottom. Tapping a row closes the drawer, flies the globe and opens the sheet. Tapping the scrim or swiping left closes it.
 - Transitions: sheet and drawer 240 ms ease-out; the stage resize and the fly-to run together so the city lands centred as the sheet finishes **(call)**. Reduced-motion users get instant state changes.
@@ -251,13 +258,13 @@ This section is the tracker. The work is split across sessions; each session tak
 |---|---|---|---|---|
 | L1 | Left column with the five-tab strip; move the eleven sections into tabs; column footer with source dots; KPI tiles removed; column width measured and set (§5.2); `tab` in state and URL; `walk.mjs` rewritten; `lucide-react` added | S4 | – | open |
 | L2 | Top bar (§5.1): brand + source strip, controls moved up, imagery select back in the bar, live pill, UTC clock; title block and floating control panel removed from the globe | S4 | L1 | open |
-| L3 | Stage furniture (§5.3): legend to top-left, the full place panel floating top-right with globe padding on open/close, `GibsControl` removed from the globe | S3 + S4 | L2 | open |
+| L3 | Stage furniture (§5.3): legend to top-left, the full place panel floating top-right with globe padding on open/close, stage controls (zoom in / out / reset, fires and places toggles; closes KI-14 and KI-15), `GibsControl` removed from the globe | S3 + S4 | L2 | open |
 | L4 | Dock gauges (§5.4 gauges table): ring component, six tiles, region filter, tooltips | S4 | L1 | open |
 | L5 | Dock timeline (§5.4 timeline): track, play, `day` in state and URL, globe recolour from `history` / `fwi_forecast`, GIBS date follows the day, `date=` folded into `day=` | S3 | L3, L4 | open |
 | L6 | Colour usage cleanup (§6 bullets): ramp-coloured bars, zero-delta chips muted, sparklines without fill, green only on live/gates/hit-rate, one glass recipe, captions to the Sources tab (§7) | S4 | L1 | open |
 | F1 | Fire heatmap at world zoom with zoom crossfade and legend swap (§6.1 band 1) | S3 | – (ship first) | open |
 | F2 | `fires_points.json` from the pipeline, lazy load above zoom 4, real-position dots (§6.1 band 2) | S1 + S3 | F1 | open, only if time allows |
-| L7 | DESIGN.md §3 and §4 rewritten to match; KNOWN_ISSUES entries KI-14 / KI-15 re-checked against the new chrome; final walk proof | S4 | all above | open |
+| L7 | DESIGN.md §3 and §4 rewritten to match; KNOWN_ISSUES KI-14 / KI-15 moved to Fixed with a pointer to L3; final walk proof | S4 | all above | open |
 | L8 | Mobile layout "M4" (§5.5): breakpoints, glass top bar + chip row, timeline pill, city sheet with stage resize and centred fly-to, sections drawer with five tabs, touch targets; proof screenshots at 390 × 844 for all three states | S3 + S4 | L1, L3, L5, F1 | open |
 
 Done before this document: KI-1 fire tooltip, legend row and √count radii (s3-globe, 2026-11-15).
