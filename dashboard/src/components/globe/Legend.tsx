@@ -1,7 +1,7 @@
 // Bottom-left legend for the globe. Pure: everything comes from `colouring`.
 import { P, RISK_STOPS } from "@/lib/palette";
 import {
-  CATEGORIES, CATEGORY_THRESHOLD_P, CATEGORY_V, HAZARD_LABEL, VARIABLE_LABEL, riskColour, signed, slopeDigits,
+  CATEGORIES, CATEGORY_THRESHOLD_P, CATEGORY_V, CONTINUOUS_HAZARD, HAZARD_LABEL, VARIABLE_LABEL, riskColour, signed, slopeDigits,
   type Colouring,
 } from "./colour";
 import { GIBS_LAYERS, GIBS_MAX_STEP_BACK, type GibsValid } from "./gibs";
@@ -77,8 +77,9 @@ function GibsRow({ g }: { g: GibsValid }) {
 }
 
 function RiskLegend({ c }: { c: Extract<Colouring, { kind: "risk" }> }) {
-  const title = `${HAZARD_LABEL[c.hazard]} · next 14 days`;
-  const sub = c.validFrom && c.validTo ? `valid ${c.validFrom} → ${c.validTo}` : "risk assessment";
+  // M-MODE+URL: "now" = the category each place is in today, "next14" = the forecast probability
+  const title = `${HAZARD_LABEL[c.hazard]} · ${c.mode === "now" ? "category today" : "next 14 days"}`;
+  const sub = c.validFrom && c.validTo ? `risk assessment · valid ${c.validFrom} → ${c.validTo}` : "risk assessment";
   return (
     <div>
       <div className="font-semibold uppercase tracking-[0.08em] text-ink-2">{title}</div>
@@ -114,6 +115,7 @@ function RiskLegend({ c }: { c: Extract<Colouring, { kind: "risk" }> }) {
           )}
         </>
       ) : (
+        <>
         <div className="flex gap-2.5">
           {CATEGORIES.map((cat) => (
             <span key={cat} className="flex items-center gap-1">
@@ -129,6 +131,12 @@ function RiskLegend({ c }: { c: Extract<Colouring, { kind: "risk" }> }) {
             </span>
           ))}
         </div>
+        <div className="mt-0.5 text-muted">
+          {!CONTINUOUS_HAZARD[c.hazard]
+            ? "no probability for this hazard · category in both modes"
+            : "today's category · next 14 days shows the probability"}
+        </div>
+        </>
       )}
     </div>
   );
