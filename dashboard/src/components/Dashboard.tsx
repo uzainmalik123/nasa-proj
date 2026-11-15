@@ -351,7 +351,7 @@ export default function Dashboard() {
           <div className="flex h-11 items-center gap-2.5 rounded-xl border border-white/10 bg-black/65 px-3 backdrop-blur">
             <span className="brand-mark !h-4 !w-4" aria-hidden />
             <span className="min-w-0 flex-1 truncate text-[14px] font-semibold leading-none tracking-[-0.01em] text-ink">
-              Earth System Trend Detective
+              Global Alert
             </span>
             <span
               className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium uppercase leading-none tracking-[0.05em]"

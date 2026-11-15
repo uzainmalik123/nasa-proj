@@ -18,21 +18,21 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   metadataBase: new URL("https://globalalert.earth"),
   title: {
-    default: "Earth System Trend Detective · live NASA trends and 14-day hazard risk",
-    template: "%s · Earth System Trend Detective",
+    default: "Global Alert · live NASA trends and 14-day hazard risk",
+    template: "%s · Global Alert",
   },
   description: DESCRIPTION,
-  applicationName: "Earth System Trend Detective",
+  applicationName: "Global Alert",
   keywords: ["NASA", "FIRMS", "POWER", "GIBS", "wildfire", "drought", "heat", "climate trends", "Mann-Kendall", "Space Apps 2026"],
   openGraph: {
     type: "website",
     url: "https://globalalert.earth",
-    siteName: "Earth System Trend Detective",
-    title: "Earth System Trend Detective",
+    siteName: "Global Alert",
+    title: "Global Alert",
     description: DESCRIPTION,
     locale: "en",
   },
-  twitter: { card: "summary", title: "Earth System Trend Detective", description: DESCRIPTION },
+  twitter: { card: "summary", title: "Global Alert", description: DESCRIPTION },
   robots: { index: true, follow: true },
 };
 
