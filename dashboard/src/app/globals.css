@@ -105,3 +105,13 @@ html, body {
 *::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 9999px; }
 *::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
 .sidebar-scroll { scrollbar-gutter: stable; }
+
+/* phone header controls: one horizontally scrolling row (no wrap), sentence-case labels,
+   16 px search so iOS Safari does not zoom, no visible scrollbar on the row */
+.mobile-controls { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.mobile-controls::-webkit-scrollbar { display: none; }
+.mobile-controls > * { flex: none; }
+.mobile-controls label, .mobile-controls > span { font-size: 11px; text-transform: capitalize; letter-spacing: 0; white-space: nowrap; }
+.mobile-controls select { font-size: 13px; height: 30px; border-radius: 8px; }
+.mobile-controls [role="radiogroup"] button { font-size: 12px; text-transform: none; letter-spacing: 0; padding: 6px 10px; white-space: nowrap; }
+.mobile-controls input { font-size: 16px; width: 120px; }
