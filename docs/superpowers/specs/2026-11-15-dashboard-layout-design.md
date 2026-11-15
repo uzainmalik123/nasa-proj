@@ -1,6 +1,6 @@
 # Dashboard layout redesign · design
 
-2026-11-15. Decided with the user in a brainstorming session with browser mockups (`.superpowers/brainstorm/56846-1794715072/content/`, not committed). Anything marked **(call)** is my decision; change it freely.
+2026-11-15. Decided with the user in a brainstorming session with browser mockups (`.superpowers/brainstorm/56846-1794715072/content/`, not committed). **Approved by the user 2026-11-15** (desktop and mobile). Anything marked **(call)** is my decision; change it freely, but a package session that changes one writes the change here in the same PR.
 
 ## 1. Intent
 
