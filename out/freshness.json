@@ -1,0 +1,64 @@
+{
+ "meta": {
+  "run_id": "20261121T1854Z",
+  "generated_at": "2026-11-21T19:06Z",
+  "tier": 1
+ },
+ "sources": [
+  {
+   "name": "NASA FIRMS",
+   "kind": "observation",
+   "product": "VIIRS_NOAA21_NRT",
+   "valid_for": "2026-11-21T18:53Z",
+   "retrieved_at": "2026-11-21T18:54Z",
+   "records": 47235,
+   "latency_doc": "~3 h",
+   "status": "ok",
+   "url": "https://firms.modaps.eosdis.nasa.gov/"
+  },
+  {
+   "name": "NASA POWER",
+   "kind": "observation",
+   "product": "daily point, MERRA-2/GEOS, community AG",
+   "valid_for": "2026-11-18",
+   "retrieved_at": "2026-11-21T19:06Z",
+   "records": 2647350,
+   "latency_doc": "~3 days",
+   "status": "ok",
+   "url": "https://power.larc.nasa.gov/"
+  },
+  {
+   "name": "Open-Meteo",
+   "kind": "forecast",
+   "product": "16-day daily forecast (non-NASA supplement)",
+   "valid_for": "2026-11-21T18:56Z",
+   "retrieved_at": "2026-11-21T18:56Z",
+   "records": 71928,
+   "latency_doc": "model runs hourly",
+   "status": "ok",
+   "url": "https://open-meteo.com/"
+  },
+  {
+   "name": "NASA GIBS",
+   "kind": "observation",
+   "product": "WMTS tiles (probe: MODIS_Terra_CorrectedReflectance_TrueColor)",
+   "valid_for": "2026-11-20",
+   "retrieved_at": "2026-11-21T19:06Z",
+   "records": null,
+   "latency_doc": "~1 day, tiles fetched live by the dashboard",
+   "status": "ok",
+   "url": "https://gibs.earthdata.nasa.gov/"
+  },
+  {
+   "name": "Natural Earth",
+   "kind": "observation",
+   "product": "ne_10m_populated_places",
+   "valid_for": "2026-11-21T18:54Z",
+   "retrieved_at": "2026-11-21T18:54Z",
+   "records": 666,
+   "latency_doc": "static",
+   "status": "ok",
+   "url": "https://www.naturalearthdata.com/"
+  }
+ ]
+}
